@@ -2,7 +2,7 @@
  * Every record lives only in this browser's IndexedDB on this device.
  * The only network requests are exchange-rate lookups, which carry nothing but currency codes. */
 
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '1.0.3';
 const BOOT_AT = Date.now();
 const DEMO = document.documentElement.dataset.demo === '1';
 const BASE = 'SEK';
@@ -85,7 +85,9 @@ const STR = {
     appearance: '外观', theme: '主题', themeSystem: '跟随系统', themeLight: '浅色', themeDark: '深色', language: '语言', langSystem: '跟随系统',
     dataSec: '账单与数据', importTitle: '导入账单', categories: '分类管理', backupExport: '导出加密备份', backupRestore: '从备份恢复', csvExport: '导出 CSV 表格', eraseAll: '清除所有数据',
     lastBackup: '上次备份：{v}', never: '从未', daysAgo: '{n} 天前', todayAgo: '今天',
-    ratesSec: '汇率', baseCur: '主货币', ratesUpdated: '{d}的汇率', ratesNone: '尚未获取', refresh: '刷新汇率',
+    ratesSec: '货币与汇率', baseCur: '记账主货币', dispCur: '显示货币', otherCur: '其他币种',
+    dispCurNote: '合计、统计和预算会按最新汇率换算成显示货币，每笔外币记录仍保留原来的金额。', noRateYet: '还没有 {c} 的汇率，联网后再试', dispSet: '金额改为用 {c} 显示',
+    budgetInSek: '预算以瑞典克朗记录，按最新汇率换算后显示。', unitCNY: '元', ratesUpdated: '{d}的汇率', ratesNone: '尚未获取', refresh: '刷新汇率',
     ratesSource: '汇率来自 frankfurter.dev，汇集欧洲央行等各国央行每日公布的参考汇率。每笔外币记录会锁定记账时的汇率，之后不会变动。',
     about: '关于', version: '版本', privacyText: '所有账目只保存在这台设备的浏览器存储里，不会上传到任何服务器，也没有任何统计或追踪代码。唯一的网络请求是获取汇率，请求里只有币种代码，不含任何账目。',
     lockedSub: '账本已锁定', unlockFace: '使用面容 ID 解锁', usePin: '使用备用密码', useFace: '改用面容 ID', enterPin: '输入备用密码',
@@ -164,7 +166,9 @@ const STR = {
     appearance: 'Appearance', theme: 'Theme', themeSystem: 'System', themeLight: 'Light', themeDark: 'Dark', language: 'Language', langSystem: 'System',
     dataSec: 'Statements & data', importTitle: 'Import statement', categories: 'Categories', backupExport: 'Export encrypted backup', backupRestore: 'Restore from backup', csvExport: 'Export CSV', eraseAll: 'Erase all data',
     lastBackup: 'Last backup: {v}', never: 'never', daysAgo: '{n} days ago', todayAgo: 'today',
-    ratesSec: 'Exchange rates', baseCur: 'Main currency', ratesUpdated: 'Rates from {d}', ratesNone: 'Not fetched yet', refresh: 'Refresh rates',
+    ratesSec: 'Currency & rates', baseCur: 'Bookkeeping currency', dispCur: 'Display currency', otherCur: 'Other currencies',
+    dispCurNote: 'Totals, stats and budgets are converted to the display currency at the latest rate. Foreign-currency entries keep their original amounts.', noRateYet: 'No rate for {c} yet. Go online and try again', dispSet: 'Amounts now shown in {c}',
+    budgetInSek: 'Budgets are kept in kronor and converted at the latest rate for display.', unitCNY: 'CNY', ratesUpdated: 'Rates from {d}', ratesNone: 'Not fetched yet', refresh: 'Refresh rates',
     ratesSource: 'Rates come from frankfurter.dev, which collects the daily reference rates published by the ECB and other central banks. Each foreign-currency entry keeps the rate from when it was recorded.',
     about: 'About', version: 'Version', privacyText: 'Every entry stays in this device’s browser storage. Nothing is uploaded and there is no analytics or tracking. The only network request fetches exchange rates and contains currency codes only.',
     lockedSub: 'Your ledger is locked', unlockFace: 'Unlock with Face ID', usePin: 'Use passcode', useFace: 'Use Face ID instead', enterPin: 'Enter passcode',
@@ -361,7 +365,7 @@ const SUMMARY_LINE_RE = /^(ingående|utgående|saldo|summa|totalt|total|opening|
 /* ───────────────────────── state ───────────────────────── */
 
 const DEFAULT_SETTINGS = {
-  lang: 'system', theme: 'system', palette: 'harbor', icon: null, lastBackup: null, backupCount: 0, hideInstall: false, nagAt: 0, safariNagAt: 0,
+  lang: 'system', theme: 'system', palette: 'harbor', icon: null, display: 'SEK', lastBackup: null, backupCount: 0, hideInstall: false, nagAt: 0, safariNagAt: 0,
   lock: { on: false, credId: null, pinHash: null, pinSalt: null, delay: 60, fails: 0, until: 0 },
 };
 const S = {
@@ -454,6 +458,12 @@ function fmtMoney(n, cur = BASE, sign = '') {
   if (!info) return `${sign}${cur} ${abs}`;
   return info.after ? `${sign}${abs} ${info.sym}` : `${sign}${info.sym}${abs}`;
 }
+// Everything is booked in SEK; totals can be shown in another currency at the latest rate.
+const dispCur = () => { const c = S.settings?.display; return c && c !== BASE && S.rates.latest?.rates?.[c] > 0 ? c : BASE; };
+const toDisp = sek => { const c = dispCur(); return c === BASE ? sek : sek / S.rates.latest.rates[c]; };
+const fmtD = (sek, sign = '') => fmtMoney(toDisp(sek), dispCur(), sign);
+const fmtDN = (sek, dp) => fmtNum(toDisp(sek), dp ?? dpOf(dispCur()));
+const unitOf = c => (c === 'SEK' ? 'kr' : c === 'CNY' ? t('unitCNY') : c);
 const moneyParts = n => { const s = fmtNum(Math.abs(n)); const i = s.lastIndexOf('.'); return i < 0 ? [s, ''] : [s.slice(0, i), s.slice(i)]; };
 const fmtRate = r => (r >= 0.01 ? String(+r.toFixed(4)) : String(+r.toPrecision(3)));
 let dnCache = {};
@@ -553,11 +563,11 @@ function donutHTML(items, total, centerLabel) {
     off += len;
     return s;
   }).join('');
-  const [int] = moneyParts(total);
-  return raw(`<svg class="donut" viewBox="0 0 ${SZ} ${SZ}" role="img" aria-label="${esc(centerLabel)} ${esc(fmtMoney(total))}">
+  const [int] = moneyParts(toDisp(total));
+  return raw(`<svg class="donut" viewBox="0 0 ${SZ} ${SZ}" role="img" aria-label="${esc(centerLabel)} ${esc(fmtD(total))}">
     <g transform="rotate(-90 ${c0} ${c0})"><circle class="donut-track" cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke-width="${sw}"/>${segs}</g>
     <text x="${c0}" y="${c0 - 12}" class="donut-k" text-anchor="middle">${esc(centerLabel)}</text>
-    <text x="${c0}" y="${c0 + 22}" class="donut-v" text-anchor="middle">${esc(int)}<tspan class="donut-u" dx="4">kr</tspan></text></svg>`);
+    <text x="${c0}" y="${c0 + 22}" class="donut-v" text-anchor="middle">${esc(int)}<tspan class="donut-u" dx="4">${esc(unitOf(dispCur()))}</tspan></text></svg>`);
 }
 function niceMax(v) {
   if (v <= 0) return 1;
@@ -577,7 +587,7 @@ function barsHTML(series, avg, hiIndex) {
   }
   series.forEach((s, i) => {
     const x = pl + cw * i + (cw - bw) / 2, h = Math.max(s.v > 0 ? 1.5 : 0, H - pb - y(s.v));
-    const tip = `${s.tip}  ${fmtMoney(s.v)}`;
+    const tip = `${s.tip}  ${fmtMoney(s.v, dispCur())}`;
     g += `<g class="bar ${i === hiIndex ? 'hi' : ''}" data-act="bar" data-tip="${esc(tip)}"><rect class="hit" x="${(pl + cw * i).toFixed(1)}" y="${pt}" width="${cw.toFixed(1)}" height="${H - pt}"/>`
       + `<rect class="col" x="${x.toFixed(1)}" y="${(H - pb - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.min(3, bw / 2).toFixed(1)}"/></g>`;
     if (s.label && (n <= 12 || i === 0 || (i + 1) % 5 === 0))
@@ -665,7 +675,7 @@ function homeBody() {
   if (S.searchOpen && q) {
     const list = S.tx.filter(x => matchTx(x, q));
     const s = sums(list);
-    return html`<p class="search-sum">${t('searchCount', { n: list.length })}${s.e ? html`<span class="num">${MINUS}${fmtMoney(s.e)}</span>` : ''}${s.i ? html`<span class="num in">+${fmtMoney(s.i)}</span>` : ''}</p>
+    return html`<p class="search-sum">${t('searchCount', { n: list.length })}${s.e ? html`<span class="num">${MINUS}${fmtD(s.e)}</span>` : ''}${s.i ? html`<span class="num in">+${fmtD(s.i)}</span>` : ''}</p>
       ${list.length ? groupByDate(list).map(dayGroupHTML) : html`<p class="empty-line">${t('noResults')}</p>`}`;
   }
   const [a, b] = monthRange(S.month);
@@ -679,21 +689,23 @@ function matchTx(x, q) {
     || String(x.amount).includes(q) || fmtNum(x.base).includes(q) || x.currency.toLowerCase() === q;
 }
 function noteCardHTML(sum, count) {
-  const [int, dec] = moneyParts(sum.e);
+  const [int, dec] = moneyParts(toDisp(sum.e));
   const net = round2(sum.i - sum.e);
+  const dc = dispCur();
   const b = budgetStatus(S.month);
   const isNow = S.month === monthOf(todayStr());
   return html`<div class="note-wrap"><section class="note" aria-label="${t('monthSummary')}">
-    <div class="note-label">${isNow ? t('spent') : t('spentIn', { m: fmtMonthName(S.month) })}</div>
-    <div class="note-amt num"><span>${int}</span><span class="dec">${dec}</span><span class="cur">kr</span></div>
+    <div class="note-top"><span class="note-label">${isNow ? t('spent') : t('spentIn', { m: fmtMonthName(S.month) })}</span>
+      <button class="note-cur" data-act="disp-open" aria-label="${t('dispCur')}"><span class="flag">${flag(dc)}</span>${dc}${ic('chevDown', 'xs')}</button></div>
+    <div class="note-amt num"><span>${int}</span><span class="dec">${dec}</span><span class="cur">${unitOf(dc)}</span></div>
     <dl class="note-row">
-      <div><dt>${t('income')}</dt><dd class="num">${fmtNum(sum.i)}</dd></div>
-      <div><dt>${t('net')}</dt><dd class="num">${net < 0 ? MINUS : ''}${fmtNum(Math.abs(net))}</dd></div>
+      <div><dt>${t('income')}</dt><dd class="num">${fmtDN(sum.i)}</dd></div>
+      <div><dt>${t('net')}</dt><dd class="num">${net < 0 ? MINUS : ''}${fmtDN(Math.abs(net))}</dd></div>
       <div><dt>${t('count')}</dt><dd class="num">${count}</dd></div>
     </dl>
     ${b ? html`<button class="note-budget ${b.level}" data-act="tab" data-tab="budget">
         <span class="note-bar"><i style="width:${Math.min(100, b.pct * 100).toFixed(1)}%"></i></span>
-        <span class="note-bl"><span>${b.left >= 0 ? t('budgetLeft', { v: fmtMoney(b.left) }) : t('budgetOver', { v: fmtMoney(-b.left) })}</span>${b.perDay > 0 ? html`<span>${t('perDay', { v: fmtMoney(b.perDay) })}</span>` : ''}</span>
+        <span class="note-bl"><span>${b.left >= 0 ? t('budgetLeft', { v: fmtD(b.left) }) : t('budgetOver', { v: fmtD(-b.left) })}</span>${b.perDay > 0 ? html`<span>${t('perDay', { v: fmtD(b.perDay) })}</span>` : ''}</span>
       </button>` : ''}
   </section></div>`;
 }
@@ -721,16 +733,16 @@ function emptyHomeHTML() {
 }
 function dayGroupHTML(g) {
   const s = sums(g.items);
-  return html`<section class="day"><h3 class="day-head"><span>${fmtDay(g.date)}</span><span class="day-sum num">${s.e ? `${t('expense')} ${fmtNum(s.e)}` : ''}${s.e && s.i ? '　' : ''}${s.i ? `${t('income')} ${fmtNum(s.i)}` : ''}</span></h3>
+  return html`<section class="day"><h3 class="day-head"><span>${fmtDay(g.date)}</span><span class="day-sum num">${s.e ? `${t('expense')} ${fmtDN(s.e)}` : ''}${s.e && s.i ? '　' : ''}${s.i ? `${t('income')} ${fmtDN(s.i)}` : ''}</span></h3>
     <ul class="rows">${g.items.map(rowHTML)}</ul></section>`;
 }
 function rowHTML(x) {
   const c = catById(x.cat);
   const sign = x.type === 'expense' ? MINUS : '+';
-  const foreign = x.currency !== BASE;
+  const disp = dispCur(), same = x.currency === disp;
   return html`<li><button class="row" data-act="tx-edit" data-id="${x.id}">${tileHTML(c)}
     <span class="row-main"><span class="row-title">${x.note || catName(c)}</span>${x.note ? html`<span class="row-sub">${catName(c)}</span>` : ''}</span>
-    <span class="row-amt ${x.type === 'income' ? 'in' : ''}"><span class="num">${foreign ? fmtMoney(x.amount, x.currency, sign) : sign + fmtNum(x.base)}</span>${foreign ? html`<span class="amt-sub num">${sign}${fmtNum(x.base)} kr</span>` : ''}</span>
+    <span class="row-amt ${x.type === 'income' ? 'in' : ''}"><span class="num">${same ? sign + fmtNum(x.amount, dpOf(x.currency)) : fmtMoney(x.amount, x.currency, sign)}</span>${same ? '' : html`<span class="amt-sub num">${fmtD(x.base, sign)}</span>`}</span>
   </button></li>`;
 }
 
@@ -769,7 +781,8 @@ function statsView() {
     avg = elapsed ? total / elapsed : 0; avgLabel = t('monthlyAvg');
     if (y === curY) hi = new Date().getMonth();
   }
-  series.forEach(s => { s.v = round2(s.v); });
+  series.forEach(s => { s.v = round2(toDisp(s.v)); });
+  avg = toDisp(avg);
   const change = prev > 0 ? (total - prev) / prev : null;
   const label = st.mode === 'month' ? fmtMonth(S.month) : t('yearLabel', { y: S.statsYear });
   const typeName = st.type === 'expense' ? t('expense') : t('income');
@@ -782,19 +795,19 @@ function statsView() {
       <section class="panel stats-top">
         ${donutHTML(byCat, total, st.type === 'expense' ? t('totalSpent') : t('totalIncome'))}
         <dl class="kpis">
-          <div><dt>${avgLabel}</dt><dd class="num">${fmtMoney(avg)}</dd></div>
+          <div><dt>${avgLabel}</dt><dd class="num">${fmtMoney(avg, dispCur())}</dd></div>
           <div><dt>${st.mode === 'month' ? t('vsLastMonth') : t('vsLastYear')}</dt><dd class="num ${change == null ? '' : change > 0 ? 'up' : 'down'}">${change == null ? '—' : `${change > 0 ? '+' : change < 0 ? MINUS : ''}${fmtNum(Math.abs(change * 100), 1)}%`}</dd></div>
           <div><dt>${t('count')}</dt><dd class="num">${list.length}</dd></div>
         </dl>
       </section>
       <h2 class="sec">${t('byCategory')}</h2>
       <ul class="rank">${byCat.map(({ c, v, n }) => html`<li><button class="rank-row" data-act="cat-detail" data-cat="${c.id}">${tileHTML(c, 'sm')}
-        <span class="rank-main"><span class="rank-top"><span class="rank-name">${catName(c)}</span><span class="rank-v num">${fmtNum(v)}</span></span>
+        <span class="rank-main"><span class="rank-top"><span class="rank-name">${catName(c)}</span><span class="rank-v num">${fmtDN(v)}</span></span>
         <span class="rank-bar"><i style="width:${((v / byCat[0].v) * 100).toFixed(1)}%;background:${c.color}"></i></span>
         <span class="rank-meta"><span class="num">${fmtNum((v / total) * 100, 1)}%</span><span>${t('nEntries', { n })}</span></span></span></button></li>`)}</ul>
       <h2 class="sec">${st.mode === 'month' ? t('dailyTrend') : t('monthlyTrend')}</h2>
       <section class="panel chart">
-        <p class="chart-tip" id="chart-tip">${avg > 0 ? html`<span class="avg-key"></span>${avgLabel} ${fmtMoney(avg)}` : ''}</p>
+        <p class="chart-tip" id="chart-tip">${avg > 0 ? html`<span class="avg-key"></span>${avgLabel} ${fmtMoney(avg, dispCur())}` : ''}</p>
         ${barsHTML(series, avg, hi)}
       </section>`
     : html`<div class="empty compact">${themeMark()}<p class="empty-title">${t('statsEmpty', { type: typeName })}</p></div>`}`;
@@ -809,9 +822,9 @@ function budgetView() {
     ${b ? html`<section class="panel budget-main">
         ${ringHTML(b)}
         <dl class="budget-facts">
-          <div><dt>${b.left >= 0 ? t('left') : t('over')}</dt><dd class="num big ${b.level}">${fmtMoney(Math.abs(b.left))}</dd></div>
-          <div><dt>${t('spentOfTotal', { v: fmtMoney(b.total) })}</dt><dd class="num">${fmtMoney(b.spent)}</dd></div>
-          ${b.perDay > 0 ? html`<div><dt>${t('perDayLeft', { n: b.daysLeft })}</dt><dd class="num">${fmtMoney(b.perDay)}</dd></div>` : b.daysLeft === 0 && ym < monthOf(todayStr()) ? html`<div><dt>${t('monthEnded')}</dt><dd></dd></div>` : ''}
+          <div><dt>${b.left >= 0 ? t('left') : t('over')}</dt><dd class="num big ${b.level}">${fmtD(Math.abs(b.left))}</dd></div>
+          <div><dt>${t('spentOfTotal', { v: fmtD(b.total) })}</dt><dd class="num">${fmtD(b.spent)}</dd></div>
+          ${b.perDay > 0 ? html`<div><dt>${t('perDayLeft', { n: b.daysLeft })}</dt><dd class="num">${fmtD(b.perDay)}</dd></div>` : b.daysLeft === 0 && ym < monthOf(todayStr()) ? html`<div><dt>${t('monthEnded')}</dt><dd></dd></div>` : ''}
         </dl>
         <button class="btn small ghost edit-budget" data-act="budget-edit">${t('editBudget')}</button>
       </section>`
@@ -820,9 +833,9 @@ function budgetView() {
     ${cb.length ? html`<ul class="cbud">${cb.map(id => {
       const c = catById(id), s = budgetStatus(ym, id);
       return html`<li><button class="cbud-row ${s.level}" data-act="catbudget-edit" data-cat="${id}">${tileHTML(c, 'sm')}
-        <span class="rank-main"><span class="rank-top"><span class="rank-name">${catName(c)}</span><span class="rank-v num">${fmtNum(s.spent)}<small> / ${fmtNum(s.total, 0)}</small></span></span>
+        <span class="rank-main"><span class="rank-top"><span class="rank-name">${catName(c)}</span><span class="rank-v num">${fmtDN(s.spent)}<small> / ${fmtDN(s.total, 0)}</small></span></span>
         <span class="rank-bar"><i style="width:${Math.min(100, s.pct * 100).toFixed(1)}%"></i></span>
-        <span class="rank-meta"><span>${s.left >= 0 ? t('budgetLeft', { v: fmtMoney(s.left) }) : t('budgetOver', { v: fmtMoney(-s.left) })}</span><span class="num">${Math.round(s.pct * 100)}%</span></span></span></button></li>`;
+        <span class="rank-meta"><span>${s.left >= 0 ? t('budgetLeft', { v: fmtD(s.left) }) : t('budgetOver', { v: fmtD(-s.left) })}</span><span class="num">${Math.round(s.pct * 100)}%</span></span></span></button></li>`;
     })}</ul>` : html`<p class="muted-line">${t('catBudgetEmpty')}</p>`}
     <button class="btn ghost wide" data-act="catbudget-add">${ic('plus')}<span>${t('addCatBudget')}</span></button>`;
 }
@@ -865,13 +878,38 @@ function settingsView() {
     <h2 class="sec">${t('ratesSec')}</h2>
     <div class="group">
       ${row('exchange', t('baseCur'), { value: `${flag(BASE)} SEK` })}
+      <div class="srow col"><span class="srow-ic">${ic('globe')}</span><span class="srow-main"><span class="srow-label">${t('dispCur')}</span></span>${segmented('set-disp', st.display || BASE, DISP_QUICK.map(c => [c, c]), 'small')}</div>
+      ${row('search', t('otherCur'), { act: 'disp-other', value: DISP_QUICK.includes(st.display) ? null : `${flag(st.display)} ${st.display}` })}
       ${row('refresh', t('refresh'), { act: 'rates-refresh', sub: R ? t('ratesUpdated', { d: fmtDate(R.date) }) : t('ratesNone') })}
     </div>
-    <p class="foot-note">${t('ratesSource')}</p>
+    <p class="foot-note">${t('dispCurNote')} ${t('ratesSource')}</p>
     <h2 class="sec">${t('about')}</h2>
     <div class="group about">${themeMark('about-mark')}<p>${t('privacyText')}</p><p class="ver">${t('version')} ${APP_VERSION}</p></div>`;
 }
 
+const DISP_QUICK = ['SEK', 'CNY', 'USD', 'EUR'];
+async function setDisplay(c) {
+  if (c !== BASE && !(S.rates.latest?.rates?.[c] > 0)) {
+    await ensureLatestRates(true).catch(() => {});
+    if (!(S.rates.latest?.rates?.[c] > 0)) { toast(t('noRateYet', { c })); return; }
+  }
+  S.settings.display = c;
+  await saveSettings();
+  const sh = sheetById('disp'); if (sh) closeSheet(sh);
+  refreshAll();
+  toast(t('dispSet', { c }));
+}
+function openDispPicker() {
+  const cur = dispCur(), R = S.rates.latest;
+  const rowFor = c => html`<li><button class="cur-row ${c === cur ? 'on' : ''}" data-act="disp-pick" data-c="${c}"><span class="flag">${flag(c)}</span>
+    <span class="cur-main"><b>${c}</b><span>${curName(c)}</span></span><span class="cur-rate num">${c === BASE ? '' : R?.rates?.[c] ? `1 ${c} = ${fmtRate(R.rates[c])} kr` : '—'}</span>${c === cur ? ic('check', 'sm') : ''}</button></li>`;
+  openSheet({
+    id: 'disp', title: t('dispCur'),
+    body: html`<p class="lead">${t('dispCurNote')}${R ? html` ${t('ratesUpdated', { d: fmtDate(R.date) })}` : ''}</p>
+      <ul class="cur-list">${[...new Set([...DISP_QUICK, ...(DISP_QUICK.includes(S.settings.display) ? [] : [S.settings.display])])].map(rowFor)}</ul>
+      <button class="btn ghost wide" data-act="disp-other">${ic('search')}<span>${t('otherCur')}</span></button>`,
+  });
+}
 function paletteSwatches() {
   const cur = S.settings.palette;
   return html`<div class="pals" role="radiogroup" aria-label="${t('palette')}">${PALETTES.map(p => html`<button class="pal ${p === cur ? 'on' : ''}" data-act="set-palette" data-v="${p}" data-palette="${p}" role="radio" aria-checked="${p === cur ? 'true' : 'false'}">
@@ -1286,7 +1324,7 @@ function openBudgetSheet(catId) {
     right: html`<button class="txt-btn strong" data-act="budget-save">${t('save')}</button>`,
     body: html`${c ? html`<div class="cat-preview">${tileHTML(c, 'lg')}</div>` : ''}<p class="field-label">${t('budgetAmount')}</p>
       <div class="field"><input id="budget-in" type="text" inputmode="decimal" value="${cur > 0 ? trimNum(cur, 2) : ''}" placeholder="0" autocomplete="off"><span class="suffix">kr</span></div>
-      <p class="hint">${t('budgetHint')}</p>
+      <p class="hint">${t('budgetHint')}${dispCur() !== BASE ? ' ' + t('budgetInSek') : ''}</p>
       ${cur > 0 ? html`<button class="btn danger-ghost wide" data-act="budget-remove">${t('removeBudget')}</button>` : ''}`,
   });
   rec.catId = catId;
@@ -1369,7 +1407,7 @@ function unlockApp() {
   $('#lock').hidden = true;
   $('#lock').innerHTML = '';
   renderApp();
-  ensureLatestRates().then(() => { if (S.tab === 'settings') renderView(); }).catch(() => {});
+  ensureLatestRates().then(() => { if (S.tab === 'settings' || S.settings.display !== BASE) renderView(); }).catch(() => {});
 }
 async function lockFace() {
   try {
@@ -1520,8 +1558,8 @@ async function decryptBackup(env, password) {
   return JSON.parse(td.decode(data));
 }
 function backupPayload() {
-  const { palette, icon, theme, lang } = S.settings;
-  return { app: 'tally', v: 1, exportedAt: new Date().toISOString(), tx: S.tx, cats: S.cats, budget: S.budget, rules: S.rules, lastCat: S.lastCat, recentCur: S.recentCur, prefs: { palette, icon, theme, lang } };
+  const { palette, icon, theme, lang, display } = S.settings;
+  return { app: 'tally', v: 1, exportedAt: new Date().toISOString(), tx: S.tx, cats: S.cats, budget: S.budget, rules: S.rules, lastCat: S.lastCat, recentCur: S.recentCur, prefs: { palette, icon, theme, lang, display } };
 }
 function openBackupExport() {
   const body = (err = '') => html`<p class="lead">${t('backupWhy')}</p>
@@ -1624,6 +1662,7 @@ function sanitizeBackup(o) {
   if ('icon' in pr && (pr.icon === null || PALETTES.includes(pr.icon))) prefs.icon = pr.icon;
   if (['system', 'light', 'dark'].includes(pr.theme)) prefs.theme = pr.theme;
   if (['system', 'zh', 'en'].includes(pr.lang)) prefs.lang = pr.lang;
+  if (typeof pr.display === 'string' && /^[A-Z]{3}$/.test(pr.display)) prefs.display = pr.display;
   return { tx, cats, budget, rules, lastCat, recentCur, prefs };
 }
 async function exportCSV() {
@@ -2495,7 +2534,7 @@ const ACT = {
       const [from, to] = statsRange();
       const list = S.tx.filter(x => x.cat === c.id && x.date >= from && x.date <= to);
       const total = round2(list.reduce((a, x) => a + x.base, 0));
-      return html`<div class="catd-sum">${tileHTML(c, 'lg')}<div><b class="num">${fmtMoney(total)}</b><span>${t('nEntries', { n: list.length })}</span></div></div>${groupByDate(list).map(dayGroupHTML)}`;
+      return html`<div class="catd-sum">${tileHTML(c, 'lg')}<div><b class="num">${fmtD(total)}</b><span>${t('nEntries', { n: list.length })}</span></div></div>${groupByDate(list).map(dayGroupHTML)}`;
     };
     const rec = openSheet({ id: 'catd', title: catName(c), tall: true, left: html`<button class="txt-btn" data-act="sheet-close">${t('done')}</button>`, body: draw() });
     rec.refresh = () => rec.body(draw());
@@ -2592,6 +2631,10 @@ const ACT = {
   },
   /* settings */
   'set-theme'(el) { S.settings.theme = el.dataset.v; saveSettings(); applyTheme(); renderView(); },
+  'set-disp'(el) { setDisplay(el.dataset.v); },
+  'disp-open'() { openDispPicker(); },
+  'disp-pick'(el) { setDisplay(el.dataset.c); },
+  'disp-other'() { openCurrencySheet(dispCur(), c => setDisplay(c)); },
   'set-palette'(el) { S.settings.palette = el.dataset.v; saveSettings(); applyPalette(); renderView(); },
   'set-icon'(el) {
     const v = el.dataset.v, changed = v !== (PALETTES.includes(S.settings.icon) ? S.settings.icon : S.settings.palette);
@@ -2831,7 +2874,7 @@ async function boot() {
     if (S.settings.lock.credId) lockFace();
   } else {
     renderApp();
-    ensureLatestRates().then(() => { if (S.tab === 'settings') renderView(); }).catch(() => {});
+    ensureLatestRates().then(() => { if (S.tab === 'settings' || S.settings.display !== BASE) renderView(); }).catch(() => {});
   }
 }
 boot().catch(e => {
