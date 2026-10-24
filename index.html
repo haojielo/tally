@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.frankfurter.dev https://open.er-api.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Tally：只保存在你手机上的私密记账本">
+<meta name="theme-color" content="#EEF1F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B1215" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tally">
+<meta name="format-detection" content="telephone=no">
+<title>Tally</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<div id="sheets"></div>
+<div id="lock" hidden></div>
+<div id="cover" aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="file-in" tabindex="-1" aria-hidden="true">
+<noscript><p style="padding:40px 24px;text-align:center">Tally 需要启用 JavaScript。</p></noscript>
+</body>
+</html>
