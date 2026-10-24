@@ -2,7 +2,7 @@
  * Every record lives only in this browser's IndexedDB on this device.
  * The only network requests are exchange-rate lookups, which carry nothing but currency codes. */
 
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 const BOOT_AT = Date.now();
 const DEMO = document.documentElement.dataset.demo === '1';
 const BASE = 'SEK';
@@ -68,7 +68,7 @@ const STR = {
     notePh: '添加备注', date: '日期', currency: '币种',
     saved: '已保存', deleted: '已删除', enterAmount: '先输入金额', delTitle: '删除这笔记录？', delMsg: '删除后无法恢复。', negative: '金额需要大于 0',
     rateLoading: '正在获取汇率…', rateMissing: '还没有汇率，点这里手动输入', needRate: '缺少汇率，请联网后重试或手动输入',
-    rateTitle: '汇率', rateFor: '1 {c} 等于多少瑞典克朗', rateDateNote: '{d} 的参考汇率', useLatest: '使用最新汇率', rateUpdated: '汇率已更新', rateFail: '获取汇率失败，请检查网络', rateInvalid: '请输入有效的汇率',
+    rateTitle: '汇率', rateFor: '1 {c} 等于多少 {q}', rateDateNote: '{d} 的参考汇率', useLatest: '使用最新汇率', rateUpdated: '汇率已更新', rateFail: '获取汇率失败，请检查网络', rateInvalid: '请输入有效的汇率',
     chooseCur: '选择币种', curSearchPh: '搜索币种代码或名称',
     newCat: '新分类', editCat: '编辑分类', catName: '名称', catIcon: '图标', catColor: '颜色', catNamePh: '比如：咖啡', delCat: '删除分类', delCatMsg: '这个分类下的 {n} 笔记录会移到“其他”。', otherLocked: '“其他”分类不能删除', catSaved: '分类已保存', catDeleted: '分类已删除', needName: '先填写名称',
     cat_food: '餐饮', cat_groceries: '超市', cat_transport: '交通', cat_housing: '住房', cat_utilities: '水电通讯', cat_shopping: '购物', cat_fun: '娱乐', cat_subs: '订阅', cat_health: '医疗健康', cat_study: '学习', cat_travel: '旅行', cat_gifts: '人情', cat_other: '其他',
@@ -85,10 +85,10 @@ const STR = {
     appearance: '外观', theme: '主题', themeSystem: '跟随系统', themeLight: '浅色', themeDark: '深色', language: '语言', langSystem: '跟随系统',
     dataSec: '账单与数据', importTitle: '导入账单', categories: '分类管理', backupExport: '导出加密备份', backupRestore: '从备份恢复', csvExport: '导出 CSV 表格', eraseAll: '清除所有数据',
     lastBackup: '上次备份：{v}', never: '从未', daysAgo: '{n} 天前', todayAgo: '今天',
-    ratesSec: '货币与汇率', baseCur: '记账主货币', dispCur: '显示货币', otherCur: '其他币种',
-    dispCurNote: '合计、统计和预算会按最新汇率换算成显示货币，每笔外币记录仍保留原来的金额。', noRateYet: '还没有 {c} 的汇率，联网后再试', dispSet: '金额改为用 {c} 显示',
-    budgetInSek: '预算以瑞典克朗记录，按最新汇率换算后显示。', unitCNY: '元', ratesUpdated: '{d}的汇率', ratesNone: '尚未获取', refresh: '刷新汇率',
-    ratesSource: '汇率来自 frankfurter.dev，汇集欧洲央行等各国央行每日公布的参考汇率。每笔外币记录会锁定记账时的汇率，之后不会变动。',
+    ratesSec: '货币与汇率', dispCur: '货币', otherCur: '其他币种',
+    dispCurNote: '记一笔时默认用这个货币，合计、统计和预算也都用它显示。其他币种的记录按记账当天的汇率换算，原来的金额会保留。', noRateYet: '还没有 {c} 的汇率，联网后再试', dispSet: '已改用 {c}',
+    unitCNY: '元', ratesUpdated: '{d}的汇率', ratesNone: '尚未获取', refresh: '刷新汇率',
+    ratesSource: '汇率来自 frankfurter.dev，汇集欧洲央行等各国央行每日公布的参考汇率。',
     about: '关于', version: '版本', privacyText: '所有账目只保存在这台设备的浏览器存储里，不会上传到任何服务器，也没有任何统计或追踪代码。唯一的网络请求是获取汇率，请求里只有币种代码，不含任何账目。',
     lockedSub: '账本已锁定', unlockFace: '使用面容 ID 解锁', usePin: '使用备用密码', useFace: '改用面容 ID', enterPin: '输入备用密码',
     wrongPin: '密码不对，请再试一次', tooMany: '尝试次数太多，请 {s} 秒后再试', faceFailed: '面容 ID 未通过，可以改用备用密码',
@@ -116,6 +116,7 @@ const STR = {
     diagCopy: '复制格式信息', diagCopied: '格式信息已复制', diagSelect: '已选中格式信息，请手动复制', diagShow: '查看内容', diagWrong: '识别得不对？复制格式信息',
     impFound: '{n} 笔交易', impRange: '{a} 至 {b}', impDup: '{n} 笔之前已导入过，已自动跳过。', impUnchecked: '转账、未入账和可能已手动记过的 {n} 笔默认不导入，需要时可以勾选。',
     impAllPositive: '所有金额都是正数。如果这是信用卡账单，点“正负号互换”。', impFlip: '正负号互换', impAll: '全选', impNone: '全不选', impCur: '账单币种',
+    impCurAsk: '没能识别出这份账单的货币', impCurAskSub: '请选择账单里金额的币种：', impCurAuto: '已识别为{n}（{c}），不对的话点下面的币种修改。', impCurRows: '每笔交易按表格里写的币种导入。', impPickCur: '先选择货币', impMixed: '多币种',
     impMap: '列对应', impMapSum: '日期 {d}，说明 {t}，金额 {a}', impColDate: '日期列', impColText: '说明列', impColAmt: '金额列', impColBal: '余额列（可选）', impColNone: '无',
     impGo: '导入 {n} 笔', impDone: '已导入 {n} 笔', impNoneSel: '请至少选择一笔', tagTransfer: '转账', tagPending: '未入账', tagMaybe: '可能已记过',
     srcText: '粘贴的文本', srcCSV: 'CSV 表格', srcExcel: 'Excel 表格', srcPDF: 'PDF 对账单',
@@ -149,7 +150,7 @@ const STR = {
     notePh: 'Add a note', date: 'Date', currency: 'Currency',
     saved: 'Saved', deleted: 'Deleted', enterAmount: 'Enter an amount first', delTitle: 'Delete this entry?', delMsg: 'This can’t be undone.', negative: 'The amount must be above 0',
     rateLoading: 'Getting exchange rate…', rateMissing: 'No rate yet. Tap to enter one', needRate: 'Exchange rate missing. Go online or enter one manually',
-    rateTitle: 'Exchange rate', rateFor: 'How many kronor is 1 {c}', rateDateNote: 'Reference rate for {d}', useLatest: 'Use latest rate', rateUpdated: 'Rate updated', rateFail: 'Couldn’t get rates. Check your connection', rateInvalid: 'Enter a valid rate',
+    rateTitle: 'Exchange rate', rateFor: 'Value of 1 {c} in {q}', rateDateNote: 'Reference rate for {d}', useLatest: 'Use latest rate', rateUpdated: 'Rate updated', rateFail: 'Couldn’t get rates. Check your connection', rateInvalid: 'Enter a valid rate',
     chooseCur: 'Choose currency', curSearchPh: 'Search code or name',
     newCat: 'New', editCat: 'Edit category', catName: 'Name', catIcon: 'Icon', catColor: 'Color', catNamePh: 'e.g. Coffee', delCat: 'Delete category', delCatMsg: '{n} entries in this category will move to Other.', otherLocked: 'Other can’t be deleted', catSaved: 'Category saved', catDeleted: 'Category deleted', needName: 'Enter a name first',
     cat_food: 'Dining', cat_groceries: 'Groceries', cat_transport: 'Transport', cat_housing: 'Housing', cat_utilities: 'Bills', cat_shopping: 'Shopping', cat_fun: 'Fun', cat_subs: 'Subscriptions', cat_health: 'Health', cat_study: 'Study', cat_travel: 'Travel', cat_gifts: 'Gifts', cat_other: 'Other',
@@ -166,10 +167,10 @@ const STR = {
     appearance: 'Appearance', theme: 'Theme', themeSystem: 'System', themeLight: 'Light', themeDark: 'Dark', language: 'Language', langSystem: 'System',
     dataSec: 'Statements & data', importTitle: 'Import statement', categories: 'Categories', backupExport: 'Export encrypted backup', backupRestore: 'Restore from backup', csvExport: 'Export CSV', eraseAll: 'Erase all data',
     lastBackup: 'Last backup: {v}', never: 'never', daysAgo: '{n} days ago', todayAgo: 'today',
-    ratesSec: 'Currency & rates', baseCur: 'Bookkeeping currency', dispCur: 'Display currency', otherCur: 'Other currencies',
-    dispCurNote: 'Totals, stats and budgets are converted to the display currency at the latest rate. Foreign-currency entries keep their original amounts.', noRateYet: 'No rate for {c} yet. Go online and try again', dispSet: 'Amounts now shown in {c}',
-    budgetInSek: 'Budgets are kept in kronor and converted at the latest rate for display.', unitCNY: 'CNY', ratesUpdated: 'Rates from {d}', ratesNone: 'Not fetched yet', refresh: 'Refresh rates',
-    ratesSource: 'Rates come from frankfurter.dev, which collects the daily reference rates published by the ECB and other central banks. Each foreign-currency entry keeps the rate from when it was recorded.',
+    ratesSec: 'Currency & rates', dispCur: 'Currency', otherCur: 'Other currencies',
+    dispCurNote: 'New entries use this currency, and totals, stats and budgets are shown in it. Entries in other currencies are converted at the rate on their date and keep their original amounts.', noRateYet: 'No rate for {c} yet. Go online and try again', dispSet: 'Now using {c}',
+    unitCNY: 'CNY', ratesUpdated: 'Rates from {d}', ratesNone: 'Not fetched yet', refresh: 'Refresh rates',
+    ratesSource: 'Rates come from frankfurter.dev, which collects the daily reference rates published by the ECB and other central banks.',
     about: 'About', version: 'Version', privacyText: 'Every entry stays in this device’s browser storage. Nothing is uploaded and there is no analytics or tracking. The only network request fetches exchange rates and contains currency codes only.',
     lockedSub: 'Your ledger is locked', unlockFace: 'Unlock with Face ID', usePin: 'Use passcode', useFace: 'Use Face ID instead', enterPin: 'Enter passcode',
     wrongPin: 'Wrong passcode. Try again', tooMany: 'Too many attempts. Try again in {s}s', faceFailed: 'Face ID didn’t pass. You can use your passcode',
@@ -197,6 +198,7 @@ const STR = {
     diagCopy: 'Copy format info', diagCopied: 'Format info copied', diagSelect: 'Format info selected. Copy it manually', diagShow: 'Show contents', diagWrong: 'Something wrong? Copy format info',
     impFound: '{n} transactions', impRange: '{a} to {b}', impDup: '{n} were imported before and are skipped.', impUnchecked: '{n} transfers, pending or possibly already recorded entries are unchecked. Tick any you want.',
     impAllPositive: 'Every amount is positive. If this is a credit card statement, tap “Flip signs”.', impFlip: 'Flip signs', impAll: 'Select all', impNone: 'Select none', impCur: 'Statement currency',
+    impCurAsk: 'Couldn’t tell which currency this statement uses', impCurAskSub: 'Choose the currency of its amounts:', impCurAuto: 'Detected {n} ({c}). If that’s wrong, tap the currency below.', impCurRows: 'Each transaction uses the currency written in its row.', impPickCur: 'Choose a currency first', impMixed: 'Mixed',
     impMap: 'Columns', impMapSum: 'Date {d}, description {t}, amount {a}', impColDate: 'Date', impColText: 'Description', impColAmt: 'Amount', impColBal: 'Balance (optional)', impColNone: 'None',
     impGo: 'Import {n}', impDone: 'Imported {n}', impNoneSel: 'Select at least one', tagTransfer: 'Transfer', tagPending: 'Pending', tagMaybe: 'Maybe recorded',
     srcText: 'Pasted text', srcCSV: 'CSV table', srcExcel: 'Excel table', srcPDF: 'PDF statement',
@@ -372,7 +374,7 @@ const S = {
   locked: false, tab: 'home', month: monthOf(todayStr()), statsYear: new Date().getFullYear(),
   stats: { mode: 'month', type: 'expense' }, search: '', searchOpen: false, scroll: {},
   tx: [], cats: [], settings: structuredClone(DEFAULT_SETTINGS), budget: { total: null, cats: {} }, rules: {},
-  rates: { latest: null, hist: {} }, lastCat: {}, recentCur: [], volatile: false,
+  rates: { latest: null, hist: {}, series: {} }, lastCat: {}, recentCur: [], volatile: false,
   lockUI: { mode: 'face', entered: '', msg: '' }, hiddenAt: 0, extUntil: 0, imp: null,
 };
 let F = null; // the entry form currently open
@@ -431,6 +433,7 @@ async function loadData() {
   S.budget = budget || { total: null, cats: {} };
   S.rules = rules || {};
   S.rates = rates || { latest: null, hist: {} };
+  S.rates.hist ||= {}; S.rates.series ||= {};
   S.lastCat = lastCat || {};
   S.recentCur = recentCur || [];
   sortTx();
@@ -458,13 +461,35 @@ function fmtMoney(n, cur = BASE, sign = '') {
   if (!info) return `${sign}${cur} ${abs}`;
   return info.after ? `${sign}${abs} ${info.sym}` : `${sign}${info.sym}${abs}`;
 }
-// Everything is booked in SEK; totals can be shown in another currency at the latest rate.
+/* The app works in one currency of the user's choice (S.settings.display). Each record also keeps its value in
+   kronor (`base`, at the rate on its own date) so that records in different currencies can be added up.
+   On screen a record in the chosen currency shows its exact amount; any other record is converted at the
+   rate on its own date, so totals always equal the sum of the rows. */
 const dispCur = () => { const c = S.settings?.display; return c && c !== BASE && S.rates.latest?.rates?.[c] > 0 ? c : BASE; };
-const toDisp = sek => { const c = dispCur(); return c === BASE ? sek : sek / S.rates.latest.rates[c]; };
-const fmtD = (sek, sign = '') => fmtMoney(toDisp(sek), dispCur(), sign);
-const fmtDN = (sek, dp) => fmtNum(toDisp(sek), dp ?? dpOf(dispCur()));
+const latestPer = c => (c === BASE ? 1 : S.rates.latest?.rates?.[c] || 0);
+let seriesKeys = {};
+function seriesAt(c, date) {
+  const s = S.rates.series?.[c];
+  if (!s?.r || !date) return 0;
+  if (s.r[date]) return s.r[date];
+  const keys = (seriesKeys[c] ||= Object.keys(s.r).sort());
+  let lo = 0, hi = keys.length - 1, best = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (keys[m] <= date) { best = m; lo = m + 1; } else hi = m - 1; }
+  return best >= 0 && dayDiff(date, keys[best]) <= 7 ? s.r[keys[best]] : 0;
+}
+// kronor per 1 unit of `c` on `date`: the cached daily series, then the cached day, then the latest rate
+const sekPer = (c, date) => (c === BASE ? 1 : seriesAt(c, date) || S.rates.hist?.[date]?.r?.[c] || latestPer(c));
+function val(x) {
+  const c = dispCur();
+  if (c === BASE) return x.base;
+  if (x.currency === c) return x.amount;
+  const r = sekPer(c, x.date);
+  return r > 0 ? x.base / r : 0;
+}
+const fmtD = (v, sign = '') => fmtMoney(v, dispCur(), sign);
+const fmtDN = (v, dp) => fmtNum(v, dp ?? dpOf(dispCur()));
 const unitOf = c => (c === 'SEK' ? 'kr' : c === 'CNY' ? t('unitCNY') : c);
-const moneyParts = n => { const s = fmtNum(Math.abs(n)); const i = s.lastIndexOf('.'); return i < 0 ? [s, ''] : [s.slice(0, i), s.slice(i)]; };
+const moneyParts = (n, dp = dpOf(dispCur())) => { const s = fmtNum(Math.abs(n), dp); const i = s.lastIndexOf('.'); return i < 0 ? [s, ''] : [s.slice(0, i), s.slice(i)]; };
 const fmtRate = r => (r >= 0.01 ? String(+r.toFixed(4)) : String(+r.toPrecision(3)));
 let dnCache = {};
 function curName(code) {
@@ -490,13 +515,21 @@ function fmtDayShort(s) { const td0 = todayStr(); if (s === td0) return t('today
 const catById = id => S.cats.find(c => c.id === id) || S.cats.find(c => c.id === 'e_other') || DEFAULT_CATS[12];
 const catName = c => c.name || (c.key && STR.zh['cat_' + c.key] ? t('cat_' + c.key) : '—');
 const catsOf = type => S.cats.filter(c => c.type === type).sort((a, b) => a.order - b.order);
-function sums(list) { let e = 0, i = 0; for (const x of list) { if (x.type === 'expense') e += x.base; else i += x.base; } return { e: round2(e), i: round2(i) }; }
+function sums(list) { let e = 0, i = 0; for (const x of list) { if (x.type === 'expense') e += val(x); else i += val(x); } return { e: round2(e), i: round2(i) }; }
 const txBetween = (a, b) => S.tx.filter(x => x.date >= a && x.date <= b);
-const sumType = (type, a, b, cat) => round2(S.tx.reduce((s, x) => s + (x.type === type && x.date >= a && x.date <= b && (!cat || x.cat === cat) ? x.base : 0), 0));
+const sumType = (type, a, b, cat) => round2(S.tx.reduce((s, x) => s + (x.type === type && x.date >= a && x.date <= b && (!cat || x.cat === cat) ? val(x) : 0), 0));
 function groupByDate(list) { const m = new Map(); for (const x of list) { let g = m.get(x.date); if (!g) m.set(x.date, (g = [])); g.push(x); } return [...m].map(([date, items]) => ({ date, items })); }
+// Budgets are stored in the currency they were set in (S.budget.cur) and shown in the current one.
+function budgetIn(v) {
+  const from = S.budget.cur || BASE, to = dispCur();
+  if (from === to) return v;
+  const a = latestPer(from), b = latestPer(to);
+  return a > 0 && b > 0 ? round2((v * a) / b) : v;
+}
 function budgetStatus(ym, catId) {
-  const total = catId ? S.budget.cats[catId] : S.budget.total;
-  if (!(total > 0)) return null;
+  const stored = catId ? S.budget.cats[catId] : S.budget.total;
+  if (!(stored > 0)) return null;
+  const total = budgetIn(stored);
   const [a, b] = monthRange(ym);
   const spent = sumType('expense', a, b, catId);
   const left = round2(total - spent);
@@ -563,7 +596,7 @@ function donutHTML(items, total, centerLabel) {
     off += len;
     return s;
   }).join('');
-  const [int] = moneyParts(toDisp(total));
+  const [int] = moneyParts(total);
   return raw(`<svg class="donut" viewBox="0 0 ${SZ} ${SZ}" role="img" aria-label="${esc(centerLabel)} ${esc(fmtD(total))}">
     <g transform="rotate(-90 ${c0} ${c0})"><circle class="donut-track" cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke-width="${sw}"/>${segs}</g>
     <text x="${c0}" y="${c0 - 12}" class="donut-k" text-anchor="middle">${esc(centerLabel)}</text>
@@ -686,10 +719,10 @@ function homeBody() {
 function matchTx(x, q) {
   const c = catById(x.cat);
   return (x.note || '').toLowerCase().includes(q) || catName(c).toLowerCase().includes(q)
-    || String(x.amount).includes(q) || fmtNum(x.base).includes(q) || x.currency.toLowerCase() === q;
+    || String(x.amount).includes(q) || fmtNum(val(x)).includes(q) || x.currency.toLowerCase() === q;
 }
 function noteCardHTML(sum, count) {
-  const [int, dec] = moneyParts(toDisp(sum.e));
+  const [int, dec] = moneyParts(sum.e);
   const net = round2(sum.i - sum.e);
   const dc = dispCur();
   const b = budgetStatus(S.month);
@@ -742,7 +775,7 @@ function rowHTML(x) {
   const disp = dispCur(), same = x.currency === disp;
   return html`<li><button class="row" data-act="tx-edit" data-id="${x.id}">${tileHTML(c)}
     <span class="row-main"><span class="row-title">${x.note || catName(c)}</span>${x.note ? html`<span class="row-sub">${catName(c)}</span>` : ''}</span>
-    <span class="row-amt ${x.type === 'income' ? 'in' : ''}"><span class="num">${same ? sign + fmtNum(x.amount, dpOf(x.currency)) : fmtMoney(x.amount, x.currency, sign)}</span>${same ? '' : html`<span class="amt-sub num">${fmtD(x.base, sign)}</span>`}</span>
+    <span class="row-amt ${x.type === 'income' ? 'in' : ''}"><span class="num">${same ? sign + fmtNum(x.amount, dpOf(x.currency)) : fmtMoney(x.amount, x.currency, sign)}</span>${same ? '' : html`<span class="amt-sub num">${fmtD(val(x), sign)}</span>`}</span>
   </button></li>`;
 }
 
@@ -756,24 +789,24 @@ function statsRange() {
 function statsView() {
   const st = S.stats, [from, to, pf, pt] = statsRange();
   const list = S.tx.filter(x => x.type === st.type && x.date >= from && x.date <= to);
-  const total = round2(list.reduce((a, x) => a + x.base, 0));
+  const total = round2(list.reduce((a, x) => a + val(x), 0));
   const prev = sumType(st.type, pf, pt);
   const agg = new Map();
-  for (const x of list) { const a = agg.get(x.cat) || { v: 0, n: 0 }; a.v += x.base; a.n++; agg.set(x.cat, a); }
+  for (const x of list) { const a = agg.get(x.cat) || { v: 0, n: 0 }; a.v += val(x); a.n++; agg.set(x.cat, a); }
   const byCat = [...agg].map(([id, a]) => ({ c: catById(id), v: round2(a.v), n: a.n })).sort((a, b) => b.v - a.v);
   const td0 = todayStr();
   let series, avg, hi = -1, avgLabel;
   if (st.mode === 'month') {
     const n = daysIn(S.month);
     series = Array.from({ length: n }, (_, i) => ({ v: 0, label: String(i + 1), tip: fmtDate(`${S.month}-${pad(i + 1)}`) }));
-    for (const x of list) series[Number(x.date.slice(8)) - 1].v += x.base;
+    for (const x of list) series[Number(x.date.slice(8)) - 1].v += val(x);
     const elapsed = S.month === monthOf(td0) ? Number(td0.slice(8)) : S.month < monthOf(td0) ? n : 0;
     avg = elapsed ? total / elapsed : 0; avgLabel = t('dailyAvg');
     if (S.month === monthOf(td0)) hi = Number(td0.slice(8)) - 1;
   } else {
     const y = S.statsYear;
     series = Array.from({ length: 12 }, (_, i) => ({ v: 0, label: LANG === 'zh' ? String(i + 1) : new Date(y, i, 1).toLocaleDateString('en-GB', { month: 'narrow' }), tip: fmtMonth(`${y}-${pad(i + 1)}`) }));
-    for (const x of list) series[Number(x.date.slice(5, 7)) - 1].v += x.base;
+    for (const x of list) series[Number(x.date.slice(5, 7)) - 1].v += val(x);
     const curY = new Date().getFullYear();
     const firstM = S.tx.reduce((m, x) => (x.date.slice(0, 4) === String(y) ? Math.min(m, Number(x.date.slice(5, 7))) : m), 13);
     const lastM = y === curY ? new Date().getMonth() + 1 : y < curY ? 12 : 0;
@@ -781,8 +814,7 @@ function statsView() {
     avg = elapsed ? total / elapsed : 0; avgLabel = t('monthlyAvg');
     if (y === curY) hi = new Date().getMonth();
   }
-  series.forEach(s => { s.v = round2(toDisp(s.v)); });
-  avg = toDisp(avg);
+  series.forEach(s => { s.v = round2(s.v); });
   const change = prev > 0 ? (total - prev) / prev : null;
   const label = st.mode === 'month' ? fmtMonth(S.month) : t('yearLabel', { y: S.statsYear });
   const typeName = st.type === 'expense' ? t('expense') : t('income');
@@ -877,8 +909,7 @@ function settingsView() {
     </div>
     <h2 class="sec">${t('ratesSec')}</h2>
     <div class="group">
-      ${row('exchange', t('baseCur'), { value: `${flag(BASE)} SEK` })}
-      <div class="srow col"><span class="srow-ic">${ic('globe')}</span><span class="srow-main"><span class="srow-label">${t('dispCur')}</span></span>${segmented('set-disp', st.display || BASE, DISP_QUICK.map(c => [c, c]), 'small')}</div>
+      <div class="srow col"><span class="srow-ic">${ic('exchange')}</span><span class="srow-main"><span class="srow-label">${t('dispCur')}</span></span>${segmented('set-disp', st.display || BASE, DISP_QUICK.map(c => [c, c]), 'small')}</div>
       ${row('search', t('otherCur'), { act: 'disp-other', value: DISP_QUICK.includes(st.display) ? null : `${flag(st.display)} ${st.display}` })}
       ${row('refresh', t('refresh'), { act: 'rates-refresh', sub: R ? t('ratesUpdated', { d: fmtDate(R.date) }) : t('ratesNone') })}
     </div>
@@ -898,6 +929,7 @@ async function setDisplay(c) {
   const sh = sheetById('disp'); if (sh) closeSheet(sh);
   refreshAll();
   toast(t('dispSet', { c }));
+  ensureDispSeries();
 }
 function openDispPicker() {
   const cur = dispCur(), R = S.rates.latest;
@@ -969,17 +1001,49 @@ function closeSheet(rec = sheets[sheets.length - 1], instant = false) {
 }
 const closeAllSheets = instant => { while (sheets.length) closeSheet(sheets[sheets.length - 1], instant); };
 const sheetById = id => sheets.find(s => s.id === id);
+// Pull a sheet down to close it: from the header, or from anywhere in its body while that part is
+// scrolled to the top. Text fields and the keypad don't start a pull, and a pull never counts as a tap.
+function scrollerIn(el, stop) {
+  for (let n = el; n && n !== stop; n = n.parentElement) {
+    const oy = getComputedStyle(n).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) return n;
+  }
+  return null;
+}
+let dragTapBlock = 0;
+document.addEventListener('click', e => { if (Date.now() < dragTapBlock) { e.stopPropagation(); e.preventDefault(); } }, true);
 function bindDrag(sheet, rec) {
-  let y0 = null, dy = 0, t0 = 0;
-  sheet.querySelectorAll('[data-drag]').forEach(h => h.addEventListener('touchstart', e => {
-    if (e.target.closest('button,input,select,label,textarea')) return;
-    y0 = e.touches[0].clientY; dy = 0; t0 = Date.now(); sheet.style.transition = 'none';
-  }, { passive: true }));
-  sheet.addEventListener('touchmove', e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); sheet.style.transform = `translateY(${dy}px)`; }, { passive: true });
+  let y0 = null, x0 = 0, dy = 0, t0 = 0, mode = null, scroller = null;
+  sheet.addEventListener('touchstart', e => {
+    y0 = null;
+    if (e.touches.length !== 1 || e.target.closest('input,select,textarea,.sheet-foot,[data-nodrag]')) return;
+    y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; t0 = Date.now(); mode = null;
+    scroller = e.target.closest('[data-drag]') ? null : scrollerIn(e.target, sheet);
+  }, { passive: true });
+  sheet.addEventListener('touchmove', e => {
+    if (y0 == null) return;
+    const y = e.touches[0].clientY, d = y - y0, dx = e.touches[0].clientX - x0;
+    if (mode == null) {
+      if (Math.abs(d) < 6 && Math.abs(dx) < 6) return;
+      // only a downward pull with the content already at its top moves the sheet; anything else scrolls
+      if (d > 0 && d > Math.abs(dx) && (!scroller || scroller.scrollTop <= 0)) {
+        mode = 'drag'; y0 = y; t0 = Date.now(); sheet.style.transition = 'none';
+        document.activeElement?.blur?.();
+      } else { mode = 'scroll'; return; }
+    }
+    if (mode !== 'drag') return;
+    if (e.cancelable) e.preventDefault();
+    dy = Math.max(0, y - y0);
+    sheet.style.transform = `translateY(${dy}px)`;
+  }, { passive: false });
   const end = () => {
     if (y0 == null) return;
-    y0 = null; sheet.style.transition = ''; sheet.style.transform = '';
-    if (dy > 110 || dy / Math.max(1, Date.now() - t0) > 0.6) closeSheet(rec);
+    const dragged = mode === 'drag';
+    y0 = null; mode = null;
+    if (!dragged) return;
+    dragTapBlock = Date.now() + 400;
+    sheet.style.transition = ''; sheet.style.transform = '';
+    if (dy > 110 || (dy > 30 && dy / Math.max(1, Date.now() - t0) > 0.6)) closeSheet(rec);
   };
   sheet.addEventListener('touchend', end);
   sheet.addEventListener('touchcancel', end);
@@ -1063,6 +1127,8 @@ async function ensureLatestRates(force = false) {
 async function rateFor(cur, date) {
   if (cur === BASE) return { rate: 1, date };
   if (!DEMO && date && date < todayStr()) {
+    const sv = seriesAt(cur, date);
+    if (sv) return { rate: sv, date };
     const h = S.rates.hist[date];
     if (h?.r?.[cur]) return { rate: h.r[cur], date: h.d };
     if (navigator.onLine) {
@@ -1079,19 +1145,73 @@ async function rateFor(cur, date) {
   const L = await ensureLatestRates();
   return L?.rates?.[cur] ? { rate: L.rates[cur], date: L.date } : null;
 }
-async function ratesForRange(cur, from, to) {
+// Daily rates for one currency over a date range, as kronor per 1 unit.
+async function fetchSeries(cur, from, to) {
   const map = new Map();
   const fill = obj => { for (const [d, r] of obj) map.set(d, r); };
   try {
-    const rows = await fetchJSON(`https://api.frankfurter.dev/v2/rates?from=${from}&to=${to}&base=sek&quotes=${cur.toLowerCase()}`);
+    const rows = await fetchJSON(`https://api.frankfurter.dev/v2/rates?from=${from}&to=${to}&base=sek&quotes=${cur.toLowerCase()}`, 15000);
     if (Array.isArray(rows)) fill(rows.filter(r => r.rate > 0 && r.date).map(r => [r.date, 1 / r.rate]));
   } catch { /* try v1 */ }
   if (!map.size) {
     try {
-      const j = await fetchJSON(`https://api.frankfurter.dev/v1/${from}..${to}?base=SEK&symbols=${cur}`);
+      const j = await fetchJSON(`https://api.frankfurter.dev/v1/${from}..${to}?base=SEK&symbols=${cur}`, 15000);
       if (j?.rates) fill(Object.entries(j.rates).filter(([, r]) => r[cur] > 0).map(([d, r]) => [d, 1 / r[cur]]));
-    } catch { /* fall back to latest */ }
+    } catch { /* nothing */ }
   }
+  return map;
+}
+// s.from..s.to is the stretch known to be complete; a range that doesn't touch it only adds its days.
+function storeSeries(cur, from, to, map) {
+  if (!map.size) return;
+  const all = (S.rates.series ||= {});
+  let s = all[cur];
+  if (!s) s = all[cur] = { from, to, at: Date.now(), r: {} };
+  else if (from <= addDays(s.to, 1) && to >= addDays(s.from, -1)) {
+    if (from < s.from) s.from = from;
+    if (to >= s.to) { s.to = to; s.at = Date.now(); }
+  }
+  for (const [d, r] of map) s.r[d] = r;
+  delete seriesKeys[cur];
+}
+// Rates for the currency on screen, covering every date that has a record in another currency.
+let seriesBusy = null;
+function ensureDispSeries() {
+  const c = dispCur(), today = todayStr();
+  if (DEMO || c === BASE || !navigator.onLine || seriesBusy) return seriesBusy || Promise.resolve();
+  let from = null;
+  for (const x of S.tx) if (x.currency !== c && (!from || x.date < from)) from = x.date;
+  if (!from || from > today) return Promise.resolve();
+  const s = S.rates.series?.[c], ranges = [];
+  if (!s) ranges.push([from, today]);
+  else {
+    if (from < s.from) ranges.push([from, s.from]);
+    if (s.to < today || Date.now() - (s.at || 0) > RATE_TTL) ranges.push([addDays(s.to, -4), today]);
+  }
+  if (!ranges.length) return Promise.resolve();
+  seriesBusy = (async () => {
+    let got = false;
+    for (const [a, b] of ranges) {
+      const m = await fetchSeries(c, a, b);
+      if (!m.size) break;
+      storeSeries(c, a, b, m); got = true;
+    }
+    if (!got) return;
+    await db.set('rates', S.rates);
+    if (dispCur() === c) refreshAll();
+  })().catch(() => {}).finally(() => { seriesBusy = null; });
+  return seriesBusy;
+}
+function syncRates() {
+  const before = S.rates.latest?.fetchedAt;
+  return ensureLatestRates()
+    .then(L => { if (!S.locked && L?.fetchedAt !== before && (S.tab === 'settings' || S.settings.display !== BASE)) refreshAll(); return ensureDispSeries(); })
+    .catch(() => {});
+}
+async function ratesForRange(cur, from, to) {
+  const map = await fetchSeries(cur, from, to);
+  if (map.size) storeSeries(cur, from, to, map);
+  else for (const [d, r] of Object.entries(S.rates.series?.[cur]?.r || {})) if (d >= addDays(from, -7) && d <= to) map.set(d, r);
   const latest = (await ensureLatestRates())?.rates?.[cur] || null;
   const dates = [...map.keys()].sort();
   return date => {
@@ -1126,7 +1246,8 @@ function openEntry(tx) {
   } else {
     const type = 'expense';
     const lc = S.lastCat[type];
-    F = { type, expr: '', cur: BASE, rate: 1, rateDate: null, rateManual: false, cat: lc && S.cats.some(c => c.id === lc) ? lc : catsOf(type)[0]?.id, date: todayStr(), note: '' };
+    const cur = dispCur();
+    F = { type, expr: '', cur, rate: latestPer(cur) || 1, rateDate: null, rateManual: false, cat: lc && S.cats.some(c => c.id === lc) ? lc : catsOf(type)[0]?.id, date: todayStr(), note: '' };
   }
   openSheet({
     id: 'entry', tall: true, cls: 'entry',
@@ -1143,12 +1264,18 @@ function openEntry(tx) {
   });
   if (F.cur !== BASE && !tx) loadRate();
 }
+// The rate is kept as kronor per unit but shown against the app's currency (or kronor when they're the same).
+function rateQuote() {
+  const D = dispCur(), Q = F.cur === D ? BASE : D, q = sekPer(Q, F.date);
+  return q > 0 ? { Q, q } : { Q: BASE, q: 1 };
+}
 function amountHTML() {
-  const val = evalExpr(F.expr), op = hasOp(F.expr);
+  const v = evalExpr(F.expr), op = hasOp(F.expr);
   const parts = [];
-  if (op) parts.push(html`<span>= ${fmtNum(val, dpOf(F.cur))}</span>`);
-  if (F.cur !== BASE) {
-    if (F.rate > 0) parts.push(html`<button class="rate-link" data-act="f-rate">≈ ${fmtMoney(val * F.rate)}<small>1 ${F.cur} = ${fmtRate(F.rate)} kr</small></button>`);
+  if (op) parts.push(html`<span>= ${fmtNum(v, dpOf(F.cur))}</span>`);
+  if (F.cur !== dispCur()) {
+    const { Q, q } = rateQuote();
+    if (F.rate > 0) parts.push(html`<button class="rate-link" data-act="f-rate">≈ ${fmtMoney((v * F.rate) / q, Q)}<small>1 ${F.cur} = ${fmtRate(F.rate / q)} ${Q === BASE ? 'kr' : Q}</small></button>`);
     else parts.push(F.rateLoading ? html`<span>${t('rateLoading')}</span>` : html`<button class="rate-link warn" data-act="f-rate">${t('rateMissing')}</button>`);
   }
   return html`<button class="cur-btn" data-act="f-cur" aria-label="${t('currency')}"><span class="flag">${flag(F.cur)}</span><span>${F.cur}</span>${ic('chevDown', 'xs')}</button>
@@ -1181,20 +1308,24 @@ function kpPress(k) {
   F.expr = e;
   updAmount();
 }
-async function loadRate() {
+function loadRate() {
   if (!F) return;
-  if (F.cur === BASE) { F.rate = 1; F.rateLoading = false; updAmount(); return; }
-  const tok = (F.tok = (F.tok || 0) + 1);
-  F.rateLoading = true; F.rate = 0; updAmount();
-  const r = await rateFor(F.cur, F.date).catch(() => null);
-  if (!F || tok !== F.tok) return;
-  F.rateLoading = false; F.rate = r?.rate || 0; F.rateDate = r?.date || null; F.rateManual = false;
-  updAmount();
+  if (F.cur === BASE) { F.rate = 1; F.rateLoading = false; F.ratePromise = null; updAmount(); return; }
+  const tok = (F.tok = (F.tok || 0) + 1), form = F;
+  // Until the rate for the entry's date arrives, the latest one stands in.
+  F.rateLoading = true; F.rate = latestPer(F.cur); updAmount();
+  F.ratePromise = rateFor(F.cur, F.date).catch(() => null).then(r => {
+    if (F !== form || tok !== F.tok) return;
+    F.rateLoading = false; F.ratePromise = null;
+    F.rate = r?.rate || latestPer(F.cur); F.rateDate = r?.date || null; F.rateManual = false;
+    updAmount();
+  });
 }
 async function saveEntry() {
   if (hasOp(F.expr)) { const v = evalExpr(F.expr); F.expr = v > 0 ? trimNum(v, dpOf(F.cur)) : ''; updAmount(); if (!(v > 0)) toast(t('negative')); return; }
   const amt = evalExpr(F.expr);
   if (!(amt > 0)) { shake('#f-amount .amt-big'); toast(t('enterAmount')); return; }
+  if (F.ratePromise) { const form = F; await Promise.race([F.ratePromise, new Promise(r => setTimeout(r, 4000))]); if (F !== form) return; }
   if (F.cur !== BASE && !(F.rate > 0)) { toast(t('needRate')); openRateSheet(); return; }
   const rate = F.cur === BASE ? 1 : F.rate;
   const now = Date.now();
@@ -1209,6 +1340,7 @@ async function saveEntry() {
   S.lastCat[F.type] = F.cat; db.set('lastCat', S.lastCat);
   if (F.cur !== BASE) { S.recentCur = [F.cur, ...S.recentCur.filter(c => c !== F.cur)].slice(0, 5); db.set('recentCur', S.recentCur); }
   const isNew = !F.orig;
+  if (tx.currency !== dispCur()) ensureDispSeries();
   closeSheet(sheetById('entry'));
   if (isNew && S.tab === 'home' && monthOf(tx.date) !== S.month && !S.search) S.month = monthOf(tx.date);
   refreshAll();
@@ -1216,14 +1348,16 @@ async function saveEntry() {
   toast(t('saved'));
 }
 function openRateSheet() {
+  const { Q, q } = rateQuote();
   const rec = openSheet({
     id: 'rate', title: t('rateTitle'),
     right: html`<button class="txt-btn strong" data-act="rate-save">${t('save')}</button>`,
-    body: html`<p class="field-label">${t('rateFor', { c: `${flag(F.cur)} ${F.cur}` })}</p>
-      <div class="field"><input id="rate-in" type="text" inputmode="decimal" value="${F.rate > 0 ? fmtRate(F.rate) : ''}" autocomplete="off" placeholder="0.0000"><span class="suffix">SEK</span></div>
+    body: html`<p class="field-label">${t('rateFor', { c: `${flag(F.cur)} ${F.cur}`, q: Q })}</p>
+      <div class="field"><input id="rate-in" type="text" inputmode="decimal" value="${F.rate > 0 ? fmtRate(F.rate / q) : ''}" autocomplete="off" placeholder="0.0000"><span class="suffix">${Q}</span></div>
       ${F.rateDate ? html`<p class="hint">${t('rateDateNote', { d: fmtDate(F.rateDate) })}</p>` : ''}
       <button class="btn ghost wide" data-act="rate-latest">${ic('refresh')}<span>${t('useLatest')}</span></button>`,
   });
+  rec.q = q;
   rec.el.querySelector('#rate-in')?.focus();
 }
 function openCurrencySheet(current, onPick) {
@@ -1234,12 +1368,12 @@ function openCurrencySheet(current, onPick) {
   });
 }
 function curListHTML(q) {
-  const L = S.rates.latest?.rates || {};
-  const codes = [...new Set([BASE, ...S.recentCur, ...COMMON_CUR, ...Object.keys(L).sort()])].filter(c => /^[A-Z]{3}$/.test(c));
+  const L = S.rates.latest?.rates || {}, D = dispCur(), dq = latestPer(D), unit = D === BASE ? 'kr' : D;
+  const codes = [...new Set([D, BASE, ...S.recentCur, ...COMMON_CUR, ...Object.keys(L).sort()])].filter(c => /^[A-Z]{3}$/.test(c));
   const ql = q.trim().toLowerCase();
   const list = codes.filter(c => !ql || c.toLowerCase().includes(ql) || curName(c).toLowerCase().includes(ql));
   return html`${list.map(c => html`<li><button class="cur-row ${c === S.curCurrent ? 'on' : ''}" data-act="cur-pick" data-c="${c}"><span class="flag">${flag(c)}</span>
-    <span class="cur-main"><b>${c}</b><span>${curName(c)}</span></span><span class="cur-rate num">${c === BASE ? '' : L[c] ? `${fmtRate(L[c])} kr` : '—'}</span>${c === S.curCurrent ? ic('check', 'sm') : ''}</button></li>`)}`;
+    <span class="cur-main"><b>${c}</b><span>${curName(c)}</span></span><span class="cur-rate num">${c === D ? '' : L[c] && dq ? `${fmtRate(L[c] / dq)} ${unit}` : '—'}</span>${c === S.curCurrent ? ic('check', 'sm') : ''}</button></li>`)}`;
 }
 
 /* ───────────────────────── categories editor ───────────────────────── */
@@ -1317,14 +1451,15 @@ function openCatsManager() {
 /* ───────────────────────── budget sheets ───────────────────────── */
 
 function openBudgetSheet(catId) {
-  const cur = catId ? S.budget.cats[catId] : S.budget.total;
+  const stored = catId ? S.budget.cats[catId] : S.budget.total;
+  const cur = stored > 0 ? budgetIn(stored) : 0, D = dispCur();
   const c = catId ? catById(catId) : null;
   const rec = openSheet({
     id: 'budget', title: c ? catName(c) : t('budgetTitle'),
     right: html`<button class="txt-btn strong" data-act="budget-save">${t('save')}</button>`,
     body: html`${c ? html`<div class="cat-preview">${tileHTML(c, 'lg')}</div>` : ''}<p class="field-label">${t('budgetAmount')}</p>
-      <div class="field"><input id="budget-in" type="text" inputmode="decimal" value="${cur > 0 ? trimNum(cur, 2) : ''}" placeholder="0" autocomplete="off"><span class="suffix">kr</span></div>
-      <p class="hint">${t('budgetHint')}${dispCur() !== BASE ? ' ' + t('budgetInSek') : ''}</p>
+      <div class="field"><input id="budget-in" type="text" inputmode="decimal" value="${cur > 0 ? trimNum(cur, dpOf(D)) : ''}" placeholder="0" autocomplete="off"><span class="suffix">${unitOf(D)}</span></div>
+      <p class="hint">${t('budgetHint')}</p>
       ${cur > 0 ? html`<button class="btn danger-ghost wide" data-act="budget-remove">${t('removeBudget')}</button>` : ''}`,
   });
   rec.catId = catId;
@@ -1407,7 +1542,7 @@ function unlockApp() {
   $('#lock').hidden = true;
   $('#lock').innerHTML = '';
   renderApp();
-  ensureLatestRates().then(() => { if (S.tab === 'settings' || S.settings.display !== BASE) renderView(); }).catch(() => {});
+  syncRates();
 }
 async function lockFace() {
   try {
@@ -1650,7 +1785,7 @@ function sanitizeBackup(o) {
       id: x.id.slice(0, 64), type: x.type, amount: Math.abs(+x.amount), currency: /^[A-Z]{3}$/.test(x.currency) ? x.currency : BASE, rate: +x.rate > 0 ? +x.rate : 1, base: Math.abs(+x.base),
       cat: ids.has(x.cat) ? x.cat : OTHER[x.type], date: x.date, note: str(x.note, 120), src: x.src === 'import' ? 'import' : 'manual', ...(typeof x.ext === 'string' ? { ext: x.ext.slice(0, 40) } : {}), ts: +x.ts || Date.now(), mt: +x.mt || Date.now(),
     }));
-  const budget = { total: +o.budget?.total > 0 ? +o.budget.total : null, cats: {} };
+  const budget = { total: +o.budget?.total > 0 ? +o.budget.total : null, cats: {}, cur: /^[A-Z]{3}$/.test(o.budget?.cur) ? o.budget.cur : BASE };
   for (const [k, v] of Object.entries(o.budget?.cats || {})) if (ids.has(k) && +v > 0) budget.cats[k] = +v;
   const rules = {};
   for (const [k, v] of Object.entries(o.rules || {})) if (typeof k === 'string' && ids.has(v)) rules[k.slice(0, 60)] = v;
@@ -1697,12 +1832,16 @@ function decodeText(buf) {
   const zh = (gbk.match(/[日期金额交易余额摘要收入支出转账商户备注时间记账对方账户币种]/g) || []).length;
   return zh > 3 && zh > sv ? gbk : latin;
 }
+// currency symbols and codes that may be printed around an amount
+const AMT_CODES = 'sek|cny|rmb|eur|usd|gbp|nok|dkk|jpy|hkd|chf|pln|czk|huf|isk|krw|thb|aud|cad|sgd|nzd|twd';
+const AMT_SUFFIX_RE = new RegExp(`\\s*(kr\\.?|:-|元|[¥￥€£$]|${AMT_CODES})\\s*$`, 'i');
+const AMT_PREFIX_RE = new RegExp(`^([+-]?)\\s*(kr|[a-z]{0,2}\\$|[¥￥€£]|${AMT_CODES})\\.?\\s*`, 'i');
 function parseAmount(v) {
   if (v == null) return NaN;
   if (typeof v === 'number') return v;
   let s = String(v).trim();
   if (!s) return NaN;
-  s = s.replace(/[−–—]/g, '-').replace(/\s*(kr|sek|:-|元|¥|€|\$)\s*$/i, '').replace(/^(kr|sek|¥|€|\$)\s*/i, '').replace(/[\s\u00a0\u202f']/g, '');
+  s = s.replace(/[−–—]/g, '-').replace(AMT_SUFFIX_RE, '').replace(AMT_PREFIX_RE, '$1').replace(/[\s\u00a0\u202f']/g, '');
   let neg = false;
   if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
   if (s.endsWith('-')) { neg = !neg; s = s.slice(0, -1); }
@@ -1821,26 +1960,27 @@ function detectDelim(text) {
   return best;
 }
 const HDR = {
-  date: /^(datum|date|dag|bokf[oö]rd|bokf[oö]rt|bokf[oö]ringsdag|bokf[oö]ringsdatum|bokf\.? ?dag|transaktionsdag|transaktionsdatum|trans\.? ?dag|k[oö]pdag|k[oö]pdatum|valutadag|valutadatum|reskontradatum|transaction ?date|posting ?date|booking ?date|value ?date|日期|交易日期|记账日期|交易时间|入账日期)$/i,
+  date: /^(datum|date|dag|bokf[oö]rd|bokf[oö]rt|bokf[oö]ringsdag|bokf[oö]ringsdatum|bokf\.? ?dag|transaktionsdag|transaktionsdatum|trans\.? ?dag|k[oö]pdag|k[oö]pdatum|valutadag|valutadatum|reskontradatum|transaction ?date|posting ?date|booking ?date|value ?date|started ?date|completed ?date|日期|交易日期|记账日期|交易时间|入账日期)$/i,
   text: /^(text|beskrivning|specifikation|mottagare|avs[aä]ndare|h[aä]ndelse|transaktionstext|rubrik|meddelande|transaktion|referens|description|details|transaction|merchant|payee|narrative|memo|name|摘要|交易摘要|交易说明|说明|商户|商户名称|对方户名|交易对方|备注)$/i,
   amount: /^(belopp|amount|summa|kronor|transaktionsbelopp|belopp ?sek|belopp i|amount ?sek|金额|交易金额|发生额|收支金额)$/i,
   balance: /^(saldo|balance|beh[aå]llning|bokf[oö]rt saldo|余额|账户余额|交易后余额)$/i,
   kind: /^(typ|type|transaktionstyp|budgetgrupp|kategori|category|交易类型|类型)$/i,
   debit: /^(uttag|debit|debet|utgift|utgifter|withdrawal|withdrawals|paid out|支出|支出金额|借方)$/i,
   credit: /^(ins[aä]ttning|ins[aä]ttningar|credit|kredit|inkomst|deposit|deposits|paid in|存入|收入|收入金额|贷方)$/i,
+  cur: /^(valuta|valutakod|currency|currency code|curr\.?|ccy|币种|币别|幣別|货币|貨幣|交易币种|币种名称)$/i,
 };
 const NUMERIC_KEYS = new Set(['amount', 'balance', 'debit', 'credit']);
-const normHead = s => String(s).toLowerCase().replace(/["']/g, '').replace(/\((kr|sek|元)\)|:$/g, '').replace(/\s+(kr|sek)$/, '').replace(/\s+/g, ' ').trim();
+const normHead = s => String(s).toLowerCase().replace(/["']/g, '').replace(/\s*[(（][^()（）]{1,8}[)）]|[:：]$/g, '').replace(/\s+(kr|sek|eur|usd|cny|rmb|gbp|nok|dkk)$/, '').replace(/\s+/g, ' ').trim();
 function headKey(cell) {
   const h = normHead(cell);
   if (!h || h.length > 40) return null;
   const parts = [h, ...h.split(/\s*[/|]\s*/)];
-  for (const k of ['date', 'amount', 'balance', 'text', 'kind', 'debit', 'credit']) if (parts.some(p => HDR[k].test(p))) return k;
+  for (const k of ['date', 'amount', 'balance', 'text', 'kind', 'debit', 'credit', 'cur']) if (parts.some(p => HDR[k].test(p))) return k;
   return null;
 }
 function detectColumns(rows) {
   for (let r = 0; r < Math.min(rows.length, 25); r++) {
-    const m = { headerRow: r, date: -1, text: -1, amount: -1, balance: -1, kind: [], debit: -1, credit: -1, conf: 'header', ctx: null };
+    const m = { headerRow: r, date: -1, text: -1, amount: -1, balance: -1, kind: [], debit: -1, credit: -1, cur: -1, conf: 'header', ctx: null };
     rows[r].forEach((cell, i) => {
       const k = headKey(cell);
       if (!k) return;
@@ -1851,7 +1991,7 @@ function detectColumns(rows) {
     });
     if (m.date >= 0 && (m.amount >= 0 || m.debit >= 0 || m.credit >= 0)) {
       const data = rows.slice(r + 1);
-      if (m.text < 0) m.text = guessTextCol(data.slice(0, 30), [m.date, m.amount, m.balance, m.debit, m.credit, ...m.kind]);
+      if (m.text < 0) m.text = guessTextCol(data.slice(0, 30), [m.date, m.amount, m.balance, m.debit, m.credit, m.cur, ...m.kind]);
       m.ctx = detectDateCtx(data.map(x => x[m.date]), rows.slice(0, 80).flat().join(' '));
       return m;
     }
@@ -1882,7 +2022,7 @@ function inferColumns(rows) {
   }
   const nums = [];
   for (let i = 0; i < width; i++) if (i !== date && sample.filter(r => r[i] && !Number.isNaN(parseAmount(r[i])) && /[.,]\d{2}\b|^-?\d+$/.test(String(r[i]).trim())).length / Math.max(1, sample.length) > 0.7) nums.push(i);
-  const m = { headerRow: -1, date, text: guessTextCol(sample, [date, ...nums]), amount: nums.length ? nums[nums.length >= 2 ? nums.length - 2 : 0] : -1, balance: nums.length >= 2 ? nums[nums.length - 1] : -1, kind: [], debit: -1, credit: -1, conf: 'guess', ctx: dctx };
+  const m = { headerRow: -1, date, text: guessTextCol(sample, [date, ...nums]), amount: nums.length ? nums[nums.length >= 2 ? nums.length - 2 : 0] : -1, balance: nums.length >= 2 ? nums[nums.length - 1] : -1, kind: [], debit: -1, credit: -1, cur: -1, conf: 'guess', ctx: dctx };
   if (ds < 0.5 || m.amount < 0) m.conf = 'low';
   return m;
 }
@@ -1893,9 +2033,10 @@ function recsFromTable(table) {
     const row = rows[r];
     const date = parseDate(row[map.date], excel, map.ctx);
     if (!date) continue;
-    let amount;
-    if (map.amount >= 0) amount = parseAmount(row[map.amount]);
+    let amount, cell;
+    if (map.amount >= 0) amount = parseAmount((cell = row[map.amount]));
     else {
+      cell = row[map.credit] || row[map.debit];
       const d = parseAmount(row[map.debit]), c = parseAmount(row[map.credit]);
       amount = (Number.isFinite(c) ? Math.abs(c) : 0) - (Number.isFinite(d) ? Math.abs(d) : 0);
     }
@@ -1903,7 +2044,8 @@ function recsFromTable(table) {
     const text = ((map.text >= 0 ? row[map.text] : '') || '').replace(/\s+/g, ' ').trim();
     if (SUMMARY_LINE_RE.test(text)) continue;
     const balance = map.balance >= 0 ? parseAmount(row[map.balance]) : NaN;
-    recs.push({ date, text, amount: round2(amount), balance: Number.isFinite(balance) ? balance : null, kind: map.kind.map(i => row[i]).filter(Boolean).join(' ') });
+    recs.push({ date, text, amount: round2(amount), balance: Number.isFinite(balance) ? balance : null, kind: map.kind.map(i => row[i]).filter(Boolean).join(' '),
+      cur: map.cur >= 0 ? normCur(row[map.cur]) : null, mark: curInText(cell) });
   }
   return recs;
 }
@@ -1917,12 +2059,12 @@ function fromTable(rows, src, excel = false) {
 
 /* Lines of text: pasted lists and PDFs without a recognisable table header. */
 const MONEY_RE = /(?<![\w.,])[-−–+]?\s?(?:\d{1,3}(?:[     .,]\d{3})+|\d+)[.,]\d{2}(?:\s?(?:kr|sek))?(?![\w]|[.,]\d)|(?<![\w.,])[-−–+]?\s?\d+(?:[     ]\d{3})*\s?(?:kr|sek)(?![\w]|[.,]\d)/giu;
-const MONEY_CELL_RE = /^[-−–+]?\s?(?:\d{1,3}(?:[\s.,']\d{3})+|\d+)[.,]\d{2}(?:\s?(?:kr|sek))?[-−]?$/iu;
+const MONEY_CELL_RE = new RegExp(`^(?:[-−–+]?\\s?(?:[a-z]{0,2}\\$|[¥￥€£]|${AMT_CODES})\\s?)?[-−–+]?\\s?(?:\\d{1,3}(?:[\\s.,']\\d{3})+|\\d+)[.,]\\d{2}(?:\\s?(?:kr|:-|元|[€£$¥￥]|${AMT_CODES}))?[-−]?$`, 'iu');
 const LEAD_DATE_RE = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}[-/.]\d{1,2}(?:[-/.]\d{2,4})?|\d{6,8}|\d{1,2}\s+[a-zåäö]{3,9}\.?(?:\s+\d{4})?)(?!\d)/iu;
 const DATEISH_RE = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}[-/.]\d{1,2}(?:[-/.]\d{2,4})?|\d{6,8}|\d{1,2}\s+[a-zåäö]{3,9}\.?(?:\s+\d{4})?)$/iu;
 function moneyTokens(line) {
   const toks = [];
-  for (const m of line.matchAll(MONEY_RE)) { const v = parseAmount(m[0]); if (Number.isFinite(v)) toks.push({ index: m.index, value: v }); }
+  for (const m of line.matchAll(MONEY_RE)) { const v = parseAmount(m[0]); if (Number.isFinite(v)) toks.push({ index: m.index, end: m.index + m[0].length, value: v }); }
   return toks;
 }
 function leadDate(line, ctx) {
@@ -1954,7 +2096,7 @@ function fromLines(lines, src, ctx = null, docText = '') {
     if (!text) { const last = recs[recs.length - 1]; if (last && last.date === date && last.balance == null && toks.length === 1) last.balance = toks[0].value; continue; }
     if (SUMMARY_LINE_RE.test(text)) continue;
     const pick = toks.length >= 2 ? toks.slice(-2) : toks;
-    recs.push({ date, text, amount: round2(pick[0].value), balance: pick[1] ? pick[1].value : null, alt: pick[1] ? round2(pick[1].value) : null, kind: '' });
+    recs.push({ date, text, amount: round2(pick[0].value), balance: pick[1] ? pick[1].value : null, alt: pick[1] ? round2(pick[1].value) : null, kind: '', mark: tokenMark(line, pick[0]) });
   }
   return { source: src, recs: resolveBalanceColumn(recs).filter(r => r.amount !== 0), table: null, ctx };
 }
@@ -1984,7 +2126,65 @@ function parseText(text, src) {
   }
   res ||= fromLines(text.split(/\r?\n/), src);
   res.diag = diagForRows(t('srcText'), res, res.table ? res.table.rows.map(r => r.join(' | ')) : text.split(/\r?\n/));
+  res.curGuess = detectCurrency(res, text);
   return res;
+}
+
+/* Which currency a statement is in. Signals, most trusted first: a currency column, the amount column's
+   header, a "Currency: …" line, symbols or codes printed next to the amounts, a Swedish bank, and finally
+   the only currency the document mentions at all. When none of them settles it, the user is asked. */
+const CUR_SIGNS = [
+  ['USD', /(?<![a-z])us\$|\busd\b|美元|美金/i], ['HKD', /(?<![a-z])hk\$|\bhkd\b|港币|港幣|港元/i], ['TWD', /(?<![a-z])nt\$|\btwd\b|新台币|新台幣/i],
+  ['SGD', /(?<![a-z])s\$|\bsgd\b/i], ['AUD', /(?<![a-z])au?\$|\baud\b/i], ['CAD', /(?<![a-z])ca?\$|\bcad\b/i], ['JPY', /\bjpy\b|日元|日圆|円/i], ['GBP', /£|\bgbp\b|英镑|英鎊/i], ['EUR', /€|\beur\b|\beuro\b|欧元|歐元/i],
+  ['CNY', /\bcny\b|\brmb\b|人民币|人民幣|[¥￥]|元/i], ['NOK', /\bnok\b/i], ['DKK', /\bdkk\b/i], ['CHF', /\bchf\b/i], ['PLN', /\bpln\b|zł/i],
+  ['CZK', /\bczk\b|kč/i], ['HUF', /\bhuf\b/i], ['ISK', /\bisk\b/i], ['KRW', /\bkrw\b|₩/i], ['THB', /\bthb\b|฿/i],
+  ['SEK', /\bsek\b|\bkr\b|\bkronor\b|:-|瑞典克朗/i], ['USD', /\$/],
+];
+function curInText(s) {
+  const v = String(s ?? '');
+  if (!v || !/[^\d\s.,+\-−–()]/.test(v)) return null;
+  for (const [c, re] of CUR_SIGNS) if (re.test(v)) return c;
+  return null;
+}
+function normCur(cell) {
+  const v = String(cell ?? '').trim();
+  if (!v) return null;
+  if (/^[a-z]{3}$/i.test(v)) {
+    const c = v.toUpperCase();
+    if (c === 'RMB') return 'CNY';
+    if (COMMON_CUR.includes(c) || S.rates.latest?.rates?.[c] || CUR_CC[c]) return c;
+  }
+  return curInText(v);
+}
+// a symbol right before an amount on a line (€12.50), or a code or symbol right after it (12,50 kr)
+function tokenMark(line, tok) {
+  const before = line.slice(Math.max(0, tok.index - 4), tok.index), after = line.slice(tok.end, tok.end + 6);
+  const own = curInText(line.slice(tok.index, tok.end));
+  if (own) return own;
+  const pre = before.match(/(hk\$|us\$|nt\$|[€£¥￥$₩฿])\s?$/i);
+  if (pre) return curInText(pre[1]);
+  const post = after.match(/^\s?(kr|sek|:-|元|€|£|eur|usd|cny|rmb|gbp|nok|dkk|chf|jpy|hkd|pln|czk|huf|isk)(?![a-z])/i);
+  return post ? curInText(post[1]) : null;
+}
+const META_CUR_RE = /(?:^|[\s|;,])(?:valuta|kontovaluta|currency|account currency|币种|币别|货币|幣別)\s*[:：]?\s*([A-Za-z]{3}|人民币|人民幣|美元|欧元|歐元|港币|日元|英镑|瑞典克朗)(?![A-Za-z])/i;
+const SWEDISH_BANK_RE = /\b(belopp|bokf[öo]rd|bokf[öo]rt|bokf[öo]ringsdag|kontoutdrag|kontohändelser|ins[äa]ttning|kortk[öo]p|reserverat|reskontra)/i;
+function topOf(list) { const n = new Map(); for (const v of list) n.set(v, (n.get(v) || 0) + 1); return [...n].sort((a, b) => b[1] - a[1])[0] || [null, 0]; }
+function detectCurrency(res, docText = '') {
+  const recs = res.recs || [];
+  const own = recs.map(r => r.cur).filter(Boolean);
+  if (own.length) { const kinds = new Set(own).size; return { cur: topOf(own)[0], how: 'column', rows: true, mixed: kinds > 1 }; }
+  const tb = res.table, head = tb && tb.map.headerRow >= 0 ? tb.rows[tb.map.headerRow] : res.header;
+  if (head && tb) for (const i of [tb.map.amount, tb.map.debit, tb.map.credit, tb.map.balance]) { const c = i >= 0 ? curInText(head[i]) : null; if (c) return { cur: c, how: 'header' }; }
+  const text = String(docText || '').slice(0, 60000);
+  const meta = text.slice(0, 8000).match(META_CUR_RE);
+  if (meta) { const c = normCur(meta[1]); if (c) return { cur: c, how: 'meta' }; }
+  const marks = recs.map(r => r.mark).filter(Boolean);
+  if (marks.length) { const [c, n] = topOf(marks); if (n >= marks.length * 0.8 && (n >= 2 || recs.length === 1)) return { cur: c, how: 'amounts' }; }
+  if (res.source === 'ICA Banken' || SWEDISH_BANK_RE.test(text)) return { cur: 'SEK', how: 'bank' };
+  const seen = new Map();
+  for (const [c, re] of CUR_SIGNS) { const k = (text.match(new RegExp(re.source, 'gi')) || []).length; if (k) seen.set(c, (seen.get(c) || 0) + k); }
+  if (seen.size === 1) { const [[c, k]] = [...seen]; if (k >= 2) return { cur: c, how: 'mentions' }; }
+  return { cur: null, how: null };
 }
 
 /* Excel and HTML tables */
@@ -2227,6 +2427,7 @@ function fromPdf(pdf, src) {
   const plain = fromLines(lines, src, null, lines.join('\n'));
   const useTable = table && table.recs.length && table.recs.length >= plain.recs.length * 0.8;
   const res = useTable ? table : plain;
+  res.curGuess = detectCurrency(res, lines.join('\n'));
   const sample = pdf.pages.slice(0, 2).flatMap(p => p.rows.map(r => r.cells.map(c => `${Math.round(c.x0)}:${maskText(c.s)}`).join('  ')));
   res.diag = diagText([
     `PDF · pdf.js ${pdf.version} · ${pdf.numPages} pages · ${items} text items`,
@@ -2280,6 +2481,7 @@ async function parseImportFile(file, password) {
     }
   }
   res.diag = diagForRows(res.source, res, lines);
+  res.curGuess = detectCurrency(res, lines.join('\n'));
   return res;
 }
 
@@ -2309,25 +2511,27 @@ function buildCands(P) {
   const manual = S.tx.filter(x => x.src === 'manual');
   // The same bank line can arrive from different sources (CSV, Excel, PDF, pasted text) that differ in
   // whether they carry a balance, so also match on date + amount + description, counting repeats.
-  const sigOf = (date, type, amt, text) => `${date}|${type}|${amt.toFixed(2)}|${normText(text)}`;
+  const sigOf = (cur, date, type, amt, text) => `${cur}|${date}|${type}|${amt.toFixed(2)}|${normText(text)}`;
   const have = new Map();
-  for (const x of S.tx) if (x.src === 'import' && x.currency === P.cur) { const k = sigOf(x.date, x.type, x.amount, x.note); have.set(k, (have.get(k) || 0) + 1); }
+  for (const x of S.tx) if (x.src === 'import') { const k = sigOf(x.currency, x.date, x.type, x.amount, x.note); have.set(k, (have.get(k) || 0) + 1); }
   const seen = new Map();
   P.cands = P.recs.map(r => {
+    const cur = (P.curRows && r.cur) || P.cur;
     const signed = P.flip ? -r.amount : r.amount;
     const type = signed < 0 ? 'expense' : 'income';
     const amt = Math.abs(signed);
     const base = `${r.date}|${signed.toFixed(2)}|${normText(r.text)}|${r.balance ?? ''}`;
     const n = (occ.get(base) || 0) + 1; occ.set(base, n);
     const ext = `${fnv(base)}.${n}`;
-    const sig = sigOf(r.date, type, roundDp(amt, dpOf(P.cur)), r.text);
+    const sig = sigOf(cur, r.date, type, roundDp(amt, dpOf(cur || BASE)), r.text);
     const m = (seen.get(sig) || 0) + 1; seen.set(sig, m);
-    const dup = keys.has(ext) || m <= (have.get(sig) || 0);
+    const dup = keys.has(ext) || (!!cur && m <= (have.get(sig) || 0));
     const transfer = TRANSFER_RE.test(`${r.text} ${r.kind}`);
     const pending = PENDING_RE.test(`${r.text} ${r.kind}`);
-    const maybe = !dup && manual.some(x => x.type === type && Math.abs(dayDiff(x.date, r.date)) <= 2 && (P.cur === BASE ? Math.abs(x.base - amt) < 0.011 : x.currency === P.cur && Math.abs(x.amount - amt) < 0.011));
-    const prev = P.cands?.find(c => c.ext === ext && c.manual);
-    return { ...r, amt, type, ext, dup, transfer, pending, maybe, cat: prev ? prev.cat : guessCat(r.text, r.kind, type), manual: !!prev, on: !dup && !transfer && !pending && !maybe };
+    const maybe = !dup && !!cur && manual.some(x => x.type === type && Math.abs(dayDiff(x.date, r.date)) <= 2 && (x.currency === cur ? Math.abs(x.amount - amt) < 0.011 : cur === BASE && Math.abs(x.base - amt) < 0.011));
+    const prev = P.cands?.find(c => c.ext === ext);
+    const on = prev?.touched ? prev.on : !transfer && !pending && !maybe;
+    return { ...r, cur, amt, type, ext, dup, transfer, pending, maybe, cat: prev?.manual ? prev.cat : guessCat(r.text, r.kind, type), manual: !!prev?.manual, touched: !!prev?.touched, on: !dup && on };
   });
 }
 function openImport() {
@@ -2401,7 +2605,8 @@ function openPdfPassword(file, wrong) {
   setTimeout(() => rec.el.querySelector('#pdf-pw-in')?.focus(), 350);
 }
 function startPreview(res) {
-  const P = { ...res, cur: BASE, flip: false };
+  const g = res.curGuess || {};
+  const P = { ...res, cur: g.cur || null, curHow: g.how || null, curRows: !!g.rows, mixed: !!g.mixed, flip: false };
   buildCands(P);
   S.imp = P;
   const rec = openSheet({ id: 'imp-preview', title: res.source, tall: true, body: previewBody(P), foot: previewFoot(P) });
@@ -2429,13 +2634,19 @@ function previewBody(P) {
   const allPos = P.recs.length >= 3 && P.recs.every(r => r.amount > 0);
   const colName = i => (i >= 0 ? String.fromCharCode(65 + (i % 26)) : '—');
   const notes = [];
+  const ask = P.recs.length && P.cands.some(c => !c.cur);
+  if (P.mixed) notes.push(t('impCurRows'));
+  else if (P.cur && P.curHow && P.curHow !== 'user' && P.recs.length) notes.push(t('impCurAuto', { n: curName(P.cur), c: P.cur }));
   if (dups) notes.push(t('impDup', { n: dups }));
   if (off) notes.push(t('impUnchecked', { n: off }));
   if (allPos && !P.flip) notes.push(t('impAllPositive'));
   return html`<div class="imp-sum"><b>${t('impFound', { n: list.length })}</b>${dates.length ? html`<span>${t('impRange', { a: fmtDate(dates[0]), b: fmtDate(dates[dates.length - 1]) })}</span>` : ''}</div>
+    ${ask ? html`<div class="imp-ask" id="imp-ask"><p><b>${t('impCurAsk')}</b><span>${t('impCurAskSub')}</span></p>
+      <div class="imp-ask-btns">${[...new Set([dispCur(), ...DISP_QUICK])].map(c => html`<button class="chip" data-act="imp-cur-set" data-c="${c}"><span class="flag">${flag(c)}</span>${c}</button>`)}<button class="chip" data-act="imp-cur">${t('otherCur')}</button></div></div>` : ''}
     ${notes.length ? html`<ul class="imp-notes">${notes.map(n => html`<li>${n}</li>`)}</ul>` : ''}
     <div class="imp-tools">
-      <button class="chip" data-act="imp-cur"><span class="flag">${flag(P.cur)}</span>${P.cur}${ic('chevDown', 'xs')}</button>
+      ${P.mixed ? html`<span class="chip static">${ic('globe', 'xs')}${t('impMixed')}</span>`
+        : P.cur ? html`<button class="chip" data-act="imp-cur" aria-label="${t('impCur')}"><span class="flag">${flag(P.cur)}</span>${P.cur}${ic('chevDown', 'xs')}</button>` : ''}
       <button class="chip ${P.flip ? 'on' : ''}" data-act="imp-flip">${ic('exchange', 'xs')}${t('impFlip')}</button>
       <button class="chip" data-act="imp-all">${list.length && list.every(c => c.on) ? t('impNone') : t('impAll')}</button>
     </div>
@@ -2454,31 +2665,38 @@ function impRowHTML(c, i) {
   return html`<li class="imp-row ${c.on ? '' : 'off'}" data-i="${i}">
     <button class="ck ${c.on ? 'on' : ''}" data-act="imp-toggle" data-i="${i}" aria-pressed="${c.on}" aria-label="${c.text}">${ic('check')}</button>
     <div class="imp-main">
-      <div class="imp-l1"><span class="imp-text">${c.text || '—'}</span><span class="imp-amt num ${c.type === 'income' ? 'in' : ''}">${sign}${fmtNum(c.amt, dpOf(S.imp?.cur || BASE))}</span></div>
+      <div class="imp-l1"><span class="imp-text">${c.text || '—'}</span><span class="imp-amt num ${c.type === 'income' ? 'in' : ''}">${S.imp?.mixed && c.cur ? fmtMoney(c.amt, c.cur, sign) : sign + fmtNum(c.amt, dpOf(c.cur || BASE))}</span></div>
       <div class="imp-l2"><span class="num">${fmtDate(c.date)}</span>
         ${c.transfer ? html`<span class="tag">${t('tagTransfer')}</span>` : ''}${c.pending ? html`<span class="tag">${t('tagPending')}</span>` : ''}${c.maybe ? html`<span class="tag warn">${t('tagMaybe')}</span>` : ''}
         <button class="imp-cat" data-act="imp-cat" data-i="${i}" style="--c:${cat.color}"><i></i>${catName(cat)}</button></div>
     </div></li>`;
 }
+function setImportCur(P, c) {
+  if (!P || !c) return;
+  P.cur = c; P.curHow = 'user'; P.curRows = false; P.mixed = false;
+  buildCands(P); P.rec.refresh();
+}
 function previewFoot(P) {
-  const n = P.cands.filter(c => c.on && !c.dup).length;
+  const on = P.cands.filter(c => c.on && !c.dup), n = on.length;
+  if (on.some(c => !c.cur)) return html`<button class="btn primary wide" data-act="imp-confirm" disabled>${t('impPickCur')}</button>`;
   return html`<button class="btn primary wide" data-act="imp-confirm" ${n ? '' : 'disabled'}>${t('impGo', { n })}</button>`;
 }
 async function confirmImport(P) {
   const chosen = P.cands.filter(c => c.on && !c.dup);
   if (!chosen.length) { toast(t('impNoneSel')); return; }
-  let rateOf = () => 1;
-  if (P.cur !== BASE) {
-    const ds = chosen.map(c => c.date).sort();
-    rateOf = await ratesForRange(P.cur, ds[0], ds[ds.length - 1]);
-    if (chosen.some(c => !(rateOf(c.date) > 0))) { toast(t('needRate')); return; }
+  if (chosen.some(c => !c.cur)) { shake('#imp-ask'); throw new Error(t('impPickCur')); }
+  const rateOf = {};
+  for (const cur of new Set(chosen.map(c => c.cur))) {
+    if (cur === BASE) { rateOf[cur] = () => 1; continue; }
+    const ds = chosen.filter(c => c.cur === cur).map(c => c.date).sort();
+    rateOf[cur] = await ratesForRange(cur, ds[0], ds[ds.length - 1]);
   }
+  if (chosen.some(c => !(rateOf[c.cur](c.date) > 0))) throw new Error(t('needRate'));
   const now = Date.now();
-  const dp = dpOf(P.cur);
   const txs = chosen.map((c, i) => {
-    const rate = rateOf(c.date);
-    const amount = roundDp(c.amt, dp);
-    return { id: uid(), type: c.type, amount, currency: P.cur, rate, base: round2(amount * rate), cat: c.cat, date: c.date, note: cleanText(c.text), src: 'import', ext: c.ext, ts: now + i, mt: now };
+    const rate = rateOf[c.cur](c.date);
+    const amount = roundDp(c.amt, dpOf(c.cur));
+    return { id: uid(), type: c.type, amount, currency: c.cur, rate, base: round2(amount * rate), cat: c.cat, date: c.date, note: cleanText(c.text), src: 'import', ext: c.ext, ts: now + i, mt: now };
   });
   await db.putMany(txs);
   S.tx.push(...txs); sortTx();
@@ -2490,6 +2708,7 @@ async function confirmImport(P) {
   S.month = monthOf(txs.map(x => x.date).sort().pop());
   renderApp();
   toast(t('impDone', { n: txs.length }));
+  ensureDispSeries();
 }
 
 /* ───────────────────────── actions ───────────────────────── */
@@ -2533,7 +2752,7 @@ const ACT = {
     const draw = () => {
       const [from, to] = statsRange();
       const list = S.tx.filter(x => x.cat === c.id && x.date >= from && x.date <= to);
-      const total = round2(list.reduce((a, x) => a + x.base, 0));
+      const total = round2(list.reduce((a, x) => a + val(x), 0));
       return html`<div class="catd-sum">${tileHTML(c, 'lg')}<div><b class="num">${fmtD(total)}</b><span>${t('nEntries', { n: list.length })}</span></div></div>${groupByDate(list).map(dayGroupHTML)}`;
     };
     const rec = openSheet({ id: 'catd', title: catName(c), tall: true, left: html`<button class="txt-btn" data-act="sheet-close">${t('done')}</button>`, body: draw() });
@@ -2586,15 +2805,16 @@ const ACT = {
   'rate-save'() {
     const v = parseAmount($('#rate-in')?.value);
     if (!(v > 0)) { toast(t('rateInvalid')); shake('#rate-in'); return; }
-    F.rate = v; F.rateManual = true; F.rateDate = null;
-    closeSheet(sheetById('rate')); updAmount();
+    const rec = sheetById('rate');
+    F.rate = v * (rec?.q || 1); F.rateManual = true; F.rateDate = null; F.rateLoading = false; F.ratePromise = null; F.tok = (F.tok || 0) + 1;
+    closeSheet(rec); updAmount();
   },
   async 'rate-latest'() {
     try {
       const L = await ensureLatestRates(true);
       const r = L?.rates?.[F.cur];
       if (!r) throw new Error('no rate');
-      F.rate = r; F.rateDate = L.date; F.rateManual = false;
+      F.rate = r; F.rateDate = L.date; F.rateManual = false; F.rateLoading = false; F.ratePromise = null; F.tok = (F.tok || 0) + 1;
       closeSheet(sheetById('rate')); updAmount(); toast(t('rateUpdated'));
     } catch { toast(t('rateFail')); }
   },
@@ -2619,7 +2839,14 @@ const ACT = {
     const rec = sheetById('budget');
     const v = parseAmount($('#budget-in')?.value);
     if (!(v > 0)) { toast(t('amountInvalid')); shake('#budget-in'); return; }
-    if (rec.catId) S.budget.cats[rec.catId] = round2(v); else S.budget.total = round2(v);
+    // Saving moves every budget into the current currency, so they stay comparable.
+    const D = dispCur();
+    if ((S.budget.cur || BASE) !== D) {
+      if (S.budget.total > 0) S.budget.total = budgetIn(S.budget.total);
+      for (const k of Object.keys(S.budget.cats || {})) S.budget.cats[k] = budgetIn(S.budget.cats[k]);
+      S.budget.cur = D;
+    }
+    if (rec.catId) S.budget.cats[rec.catId] = roundDp(v, dpOf(D)); else S.budget.total = roundDp(v, dpOf(D));
     await db.set('budget', S.budget);
     closeSheet(rec); refreshAll(); toast(t('budgetSaved'));
   },
@@ -2682,17 +2909,18 @@ const ACT = {
   'imp-toggle'(el) {
     const P = S.imp, c = P?.cands[+el.dataset.i];
     if (!c) return;
-    c.on = !c.on;
+    c.on = !c.on; c.touched = true;
     el.classList.toggle('on', c.on); el.setAttribute('aria-pressed', c.on);
     el.closest('.imp-row').classList.toggle('off', !c.on);
     P.rec.foot(previewFoot(P));
   },
-  'imp-all'() { const P = S.imp; const list = P.cands.filter(c => !c.dup); const all = list.every(c => c.on); list.forEach(c => { c.on = !all; }); P.rec.refresh(); },
+  'imp-all'() { const P = S.imp; const list = P.cands.filter(c => !c.dup); const all = list.every(c => c.on); list.forEach(c => { c.on = !all; c.touched = true; }); P.rec.refresh(); },
   'imp-flip'() { const P = S.imp; P.flip = !P.flip; buildCands(P); P.rec.refresh(); },
   'imp-cur'() {
     const P = S.imp;
-    openCurrencySheet(P.cur, c => { P.cur = c; buildCands(P); P.rec.refresh(); });
+    openCurrencySheet(P.cur || dispCur(), c => setImportCur(P, c));
   },
+  'imp-cur-set'(el) { setImportCur(S.imp, el.dataset.c); },
   'imp-cat'(el) {
     const P = S.imp, c = P.cands[+el.dataset.i];
     openCatPicker(c.type, [], id => {
@@ -2718,6 +2946,7 @@ const CHANGE = {
     $('#f-date-l').textContent = fmtDayShort(F.date);
     if (F.cur !== BASE && !F.rateManual) loadRate();
     else if (F.cur !== BASE && F.orig && F.orig.date !== F.date) loadRate();
+    else updAmount();
   },
   'lock-toggle'(el) { if (el.checked) enableLock(); else disableLock(); },
   'lock-delay'(el) { S.settings.lock.delay = +el.value; saveSettings(); renderView(); },
@@ -2727,6 +2956,7 @@ const CHANGE = {
     P.table.map.conf = 'user';
     if (el.dataset.f === 'date') P.table.map.ctx = detectDateCtx(P.table.rows.slice(P.table.map.headerRow + 1).map(r => r[P.table.map.date]), P.table.rows.slice(0, 80).flat().join(' '));
     P.recs = recsFromTable(P.table);
+    if (P.curHow !== 'user') { const g = detectCurrency(P, P.table.rows.map(r => r.join(' ')).join('\n')); Object.assign(P, { cur: g.cur || null, curHow: g.how || null, curRows: !!g.rows, mixed: !!g.mixed }); }
     buildCands(P); P.rec.refresh();
   },
 };
@@ -2785,11 +3015,11 @@ function bindGlobal() {
     const external = Date.now() < S.extUntil;
     if (S.settings.lock.on && !S.locked && !external && away >= S.settings.lock.delay * 1000) lockApp();
     $('#cover').classList.remove('on');
-    if (!S.locked && navigator.onLine) ensureLatestRates().catch(() => {});
+    if (!S.locked && navigator.onLine) syncRates();
     checkForUpdate();
   });
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
-  window.addEventListener('online', () => { if (!S.locked) ensureLatestRates().catch(() => {}); checkForUpdate(); });
+  window.addEventListener('online', () => { if (!S.locked) syncRates(); checkForUpdate(); });
 }
 function registerSW() {
   if (DEMO || !('serviceWorker' in navigator) || !(location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) return;
@@ -2847,7 +3077,7 @@ function seedDemo() {
   }
   add(addDays(today, -40), 'expense', 'e_travel', 39.9, 'Deutsche Bahn', 'EUR');
   S.tx = tx; sortTx();
-  S.budget = { total: 13500, cats: { e_food: 1800, e_groceries: 2600, e_shopping: 1200 } };
+  S.budget = { total: 13500, cats: { e_food: 1800, e_groceries: 2600, e_shopping: 1200 }, cur: BASE };
 }
 
 /* ───────────────────────── boot ───────────────────────── */
@@ -2874,7 +3104,7 @@ async function boot() {
     if (S.settings.lock.credId) lockFace();
   } else {
     renderApp();
-    ensureLatestRates().then(() => { if (S.tab === 'settings' || S.settings.display !== BASE) renderView(); }).catch(() => {});
+    syncRates();
   }
 }
 boot().catch(e => {
