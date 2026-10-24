@@ -2,7 +2,8 @@
  * Every record lives only in this browser's IndexedDB on this device.
  * The only network requests are exchange-rate lookups, which carry nothing but currency codes. */
 
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
+const BOOT_AT = Date.now();
 const DEMO = document.documentElement.dataset.demo === '1';
 const BASE = 'SEK';
 const te = new TextEncoder();
@@ -122,6 +123,15 @@ const STR = {
     demoBanner: '这是预览版：数据只是示例，刷新后会还原，请不要录入真实账目。',
     demoNoFile: '预览版不能导出或恢复文件，装到主屏幕的正式版可以',
     updateReady: '新版本已就绪', reload: '重新载入', offline: '当前离线',
+    updateBanner: '新版本已经下载好，重新载入后就能使用。',
+    palette: '配色', icon: '图标', pal_harbor: '港湾', pal_ledger: '账簿', pal_receipt: '小票', pal_piggy: '存钱罐', pal_coin: '金币',
+    iconHintApp: '主屏幕图标在添加时就固定了，换成新图标需要重新添加一次。', iconHintSafari: '选好后点 Safari 的“分享”→“添加到主屏幕”，就会用这个图标。',
+    iconSteps: '怎样换图标', iconStepsTitle: '更换主屏幕图标', iconStep1: '在这里的“设置”里导出加密备份。', iconStep2: '用 Safari 打开 {url}，在“设置”里选好图标。',
+    iconStep3: '点 Safari 的“分享”，选“添加到主屏幕”。', iconStep4: '打开新的 Tally 图标，用“从备份恢复”导入刚才的备份。', iconStep5: '确认记录都在以后，再删除旧图标。',
+    storeWhere: '数据存放位置', storeApp: '主屏幕上的 Tally', storeSafari: 'Safari 网页', storeBrowser: '这个浏览器',
+    storePersist: '已开启长期保存，系统不会自动清理', storeNoPersist: '未开启长期保存，手机空间不足时可能被清理', storeUnknown: '只保存在这台设备上',
+    safariTitle: '这些记录存在 Safari 里', safariText: '主屏幕上的 Tally 看不到这里的记录，Safari 也可能清理很久没访问的网站数据。请导出加密备份，再到主屏幕的 Tally 里恢复。', exportBackup: '导出备份',
+    nagNew: '上次备份以后又多了 {n} 笔记录。删除主屏幕图标或换手机时，没有备份的记录会一起消失。',
     monthSummary: '本月汇总', moreActions: '更多',
   },
   en: {
@@ -192,6 +202,15 @@ const STR = {
     demoBanner: 'Preview with sample data. It resets on reload, so don’t enter real entries.',
     demoNoFile: 'The preview can’t save or restore files. The installed app can',
     updateReady: 'A new version is ready', reload: 'Reload', offline: 'Offline',
+    updateBanner: 'A new version is downloaded. Reload to start using it.',
+    palette: 'Style', icon: 'Icon', pal_harbor: 'Harbor', pal_ledger: 'Ledger', pal_receipt: 'Receipt', pal_piggy: 'Piggy bank', pal_coin: 'Coins',
+    iconHintApp: 'The Home Screen icon is fixed when you add the app. Using a new icon means adding Tally again.', iconHintSafari: 'Now tap Share → Add to Home Screen in Safari to use this icon.',
+    iconSteps: 'How to change the icon', iconStepsTitle: 'Change the Home Screen icon', iconStep1: 'Export an encrypted backup here in Settings.', iconStep2: 'Open {url} in Safari and pick the icon in Settings.',
+    iconStep3: 'Tap Share in Safari, then Add to Home Screen.', iconStep4: 'Open the new Tally icon and restore the backup with Restore from backup.', iconStep5: 'Once your entries are there, delete the old icon.',
+    storeWhere: 'Where your data is', storeApp: 'Tally on your Home Screen', storeSafari: 'Safari web page', storeBrowser: 'This browser',
+    storePersist: 'Kept long-term. The system won’t clear it on its own', storeNoPersist: 'Not kept long-term. It may be cleared when the phone runs low on space', storeUnknown: 'Stored only on this device',
+    safariTitle: 'These entries are in Safari', safariText: 'Tally on your Home Screen can’t see entries saved here, and Safari may clear data for sites you haven’t visited in a while. Export an encrypted backup and restore it in the Home Screen app.', exportBackup: 'Export backup',
+    nagNew: '{n} new entries since your last backup. If the Home Screen icon is deleted or you change phones, they go with it.',
     monthSummary: 'Month summary', moreActions: 'More',
   },
 };
@@ -274,6 +293,8 @@ const ICONS = {
   paste: '<rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5v-1h6v1M9 10.5h6M9 14.5h4"/>',
   file: '<path d="M6.5 3h7.5l4.5 4.5V20a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M13.5 3v5h5"/>',
   key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l8.5-8.5M16 7l2.5 2.5M14 9l2 2"/>',
+  palette: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-1 1.4-2.1-.6-1.2.2-2.4 1.5-2.4H17a3.5 3.5 0 0 0 3.5-3.5c0-5-3.8-9-8.5-9z"/><circle cx="7.6" cy="11" r="1.2" fill="currentColor" stroke="none"/><circle cx="10.4" cy="7.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="7.8" r="1.2" fill="currentColor" stroke="none"/>',
+  appicon: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M9 9v6M12 9v6M15 9v6"/>',
 };
 const CAT_ICONS = ['utensils', 'cart', 'tram', 'home', 'bolt', 'bag', 'ticket', 'repeat', 'heart', 'cap', 'plane', 'gift', 'coffee', 'wine', 'shirt', 'car', 'bike', 'phone', 'wifi', 'music', 'gamepad', 'book', 'paw', 'dumbbell', 'pill', 'scissors', 'wrench', 'shield', 'star', 'briefcase', 'family', 'medal', 'laptop', 'trend', 'envelope', 'undo', 'dots'];
 const ic = (name, cls = '') => raw(`<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.dots}</svg>`);
@@ -340,7 +361,7 @@ const SUMMARY_LINE_RE = /^(ingående|utgående|saldo|summa|totalt|total|opening|
 /* ───────────────────────── state ───────────────────────── */
 
 const DEFAULT_SETTINGS = {
-  lang: 'system', theme: 'system', lastBackup: null, hideInstall: false, nagAt: 0,
+  lang: 'system', theme: 'system', palette: 'harbor', icon: null, lastBackup: null, backupCount: 0, hideInstall: false, nagAt: 0, safariNagAt: 0,
   lock: { on: false, credId: null, pinHash: null, pinSalt: null, delay: 60, fails: 0, until: 0 },
 };
 const S = {
@@ -500,6 +521,19 @@ function noteArtURL() {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><g fill="none" stroke="#fff" stroke-opacity=".17" stroke-width=".8">${p.map(d => `<path d="${d}"/>`).join('')}</g></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
+const PALETTES = ['harbor', 'ledger', 'receipt', 'piggy', 'coin'];
+const MARKS = {
+  ledger: '<g stroke-width="5" stroke-linecap="round"><path d="M30 24v52M43 24v52M56 24v52M69 24v52"/><path d="M19 68 81 32"/></g>',
+  receipt: '<g stroke-width="4" stroke-linejoin="round" stroke-linecap="round"><path d="M28 12h44v76l-7.33-5-7.33 5-7.34-5-7.33 5-7.34-5-7.33 5z"/><path d="M38 30h24M38 42h24M38 54h14M38 68h24"/></g>',
+  piggy: '<g stroke-width="4" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="47" cy="57" rx="29" ry="21"/><path d="M31 41l3-12 10 8"/><ellipse cx="78" cy="57" rx="6.5" ry="8"/><path d="M34 76v8M58 76v8M18 52c-6-1-7 6-2 7M42 37h11"/><circle cx="48" cy="17" r="7"/></g><circle cx="64" cy="51" r="2.4" fill="currentColor"/>',
+  coin: '<g stroke-width="4" stroke-linejoin="round"><ellipse cx="50" cy="28" rx="26" ry="8"/><path d="M24 28v11c0 4.4 11.6 8 26 8s26-3.6 26-8V28M24 42v11c0 4.4 11.6 8 26 8s26-3.6 26-8V42M24 56v11c0 4.4 11.6 8 26 8s26-3.6 26-8V56"/></g>',
+};
+// The small drawing used on empty screens, the lock screen and About follows the chosen style.
+function themeMark(cls = '') {
+  const p = S.settings?.palette;
+  if (!MARKS[p]) return rosetteMark(cls);
+  return raw(`<svg class="mark ${cls}" viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="currentColor">${MARKS[p]}</g></svg>`);
+}
 let markCache = null;
 function rosetteMark(cls = '') {
   markCache ||= rosettePaths(50, 50, 46, [[0.8, 0.12, 12, 7], [0.42, 0.13, 7, 6]]).map(d => `<path d="${d}"/>`).join('');
@@ -649,7 +683,7 @@ function noteCardHTML(sum, count) {
   const net = round2(sum.i - sum.e);
   const b = budgetStatus(S.month);
   const isNow = S.month === monthOf(todayStr());
-  return html`<section class="note" aria-label="${t('monthSummary')}">
+  return html`<div class="note-wrap"><section class="note" aria-label="${t('monthSummary')}">
     <div class="note-label">${isNow ? t('spent') : t('spentIn', { m: fmtMonthName(S.month) })}</div>
     <div class="note-amt num"><span>${int}</span><span class="dec">${dec}</span><span class="cur">kr</span></div>
     <dl class="note-row">
@@ -661,21 +695,28 @@ function noteCardHTML(sum, count) {
         <span class="note-bar"><i style="width:${Math.min(100, b.pct * 100).toFixed(1)}%"></i></span>
         <span class="note-bl"><span>${b.left >= 0 ? t('budgetLeft', { v: fmtMoney(b.left) }) : t('budgetOver', { v: fmtMoney(-b.left) })}</span>${b.perDay > 0 ? html`<span>${t('perDay', { v: fmtMoney(b.perDay) })}</span>` : ''}</span>
       </button>` : ''}
-  </section>`;
+  </section></div>`;
 }
 function bannersHTML() {
   const out = [];
+  if (S.updateReady) out.push(html`<div class="banner"><span class="banner-ic">${ic('refresh')}</span><div><b>${t('updateReady')}</b><p>${t('updateBanner')}</p>
+    <div class="banner-btns"><button class="btn small" data-act="reload-app">${t('reload')}</button></div></div></div>`);
   if (DEMO) out.push(html`<div class="banner"><span class="banner-ic">${ic('info')}</span><p>${t('demoBanner')}</p></div>`);
   if (S.volatile) out.push(html`<div class="banner warn"><span class="banner-ic">${ic('info')}</span><p>${t('volatile')}</p></div>`);
-  if (!DEMO && isIOS && !isStandalone() && !S.settings.hideInstall) out.push(html`<div class="banner"><span class="banner-ic">${ic('export')}</span><div><b>${t('installTitle')}</b><p>${t('installText')}</p></div><button class="icon-btn sm" data-act="hide-install" aria-label="${t('close')}">${ic('x')}</button></div>`);
+  const safari = !DEMO && isIOS && !isStandalone();
+  if (safari && S.tx.length && Date.now() - (S.settings.safariNagAt || 0) > 3 * 864e5)
+    out.push(html`<div class="banner warn"><span class="banner-ic">${ic('info')}</span><div><b>${t('safariTitle')}</b><p>${t('safariText')}</p>
+      <div class="banner-btns"><button class="btn small" data-act="backup-export">${t('exportBackup')}</button><button class="btn small ghost" data-act="safari-later">${t('later')}</button></div></div></div>`);
+  else if (safari && !S.settings.hideInstall) out.push(html`<div class="banner"><span class="banner-ic">${ic('export')}</span><div><b>${t('installTitle')}</b><p>${t('installText')}</p></div><button class="icon-btn sm" data-act="hide-install" aria-label="${t('close')}">${ic('x')}</button></div>`);
   const last = S.settings.lastBackup, days = last ? Math.floor((Date.now() - last) / 864e5) : null;
-  if (!DEMO && S.tx.length >= 30 && (days == null || days >= 30) && Date.now() - (S.settings.nagAt || 0) > 7 * 864e5)
-    out.push(html`<div class="banner"><span class="banner-ic">${ic('archive')}</span><div><b>${t('nagTitle')}</b><p>${days == null ? t('nagNever') : t('nagText', { n: days })}</p>
+  const fresh = S.tx.length - (S.settings.backupCount || 0);
+  if (!DEMO && !safari && S.tx.length >= 10 && (days == null || days >= 14 || fresh >= 40) && Date.now() - (S.settings.nagAt || 0) > 3 * 864e5)
+    out.push(html`<div class="banner"><span class="banner-ic">${ic('archive')}</span><div><b>${t('nagTitle')}</b><p>${days == null ? t('nagNever') : days >= 14 ? t('nagText', { n: days }) : t('nagNew', { n: fresh })}</p>
       <div class="banner-btns"><button class="btn small" data-act="backup-export">${t('backupNow')}</button><button class="btn small ghost" data-act="nag-later">${t('later')}</button></div></div></div>`);
   return out;
 }
 function emptyHomeHTML() {
-  return html`<div class="empty">${rosetteMark()}<p class="empty-title">${t('emptyTitle')}</p><p class="empty-sub">${t('emptySub')}</p>
+  return html`<div class="empty">${themeMark()}<p class="empty-title">${t('emptyTitle')}</p><p class="empty-sub">${t('emptySub')}</p>
     <div class="empty-btns"><button class="btn primary" data-act="add">${ic('plus')}<span>${t('addFirst')}</span></button><button class="btn ghost" data-act="import-open">${ic('import')}<span>${t('importTitle')}</span></button></div></div>`;
 }
 function dayGroupHTML(g) {
@@ -756,7 +797,7 @@ function statsView() {
         <p class="chart-tip" id="chart-tip">${avg > 0 ? html`<span class="avg-key"></span>${avgLabel} ${fmtMoney(avg)}` : ''}</p>
         ${barsHTML(series, avg, hi)}
       </section>`
-    : html`<div class="empty compact">${rosetteMark()}<p class="empty-title">${t('statsEmpty', { type: typeName })}</p></div>`}`;
+    : html`<div class="empty compact">${themeMark()}<p class="empty-title">${t('statsEmpty', { type: typeName })}</p></div>`}`;
 }
 
 /* ── budget ── */
@@ -774,7 +815,7 @@ function budgetView() {
         </dl>
         <button class="btn small ghost edit-budget" data-act="budget-edit">${t('editBudget')}</button>
       </section>`
-    : html`<section class="empty compact">${rosetteMark()}<p class="empty-title">${t('budgetEmptyTitle')}</p><p class="empty-sub">${t('budgetEmptySub')}</p><div class="empty-btns"><button class="btn primary" data-act="budget-edit">${t('setBudget')}</button></div></section>`}
+    : html`<section class="empty compact">${themeMark()}<p class="empty-title">${t('budgetEmptyTitle')}</p><p class="empty-sub">${t('budgetEmptySub')}</p><div class="empty-btns"><button class="btn primary" data-act="budget-edit">${t('setBudget')}</button></div></section>`}
     <h2 class="sec">${t('catBudgets')}</h2>
     ${cb.length ? html`<ul class="cbud">${cb.map(id => {
       const c = catById(id), s = budgetStatus(ym, id);
@@ -806,11 +847,14 @@ function settingsView() {
     </div>
     <h2 class="sec">${t('appearance')}</h2>
     <div class="group">
+      <div class="pick"><div class="pick-head">${ic('palette')}<span>${t('palette')}</span></div>${paletteSwatches()}</div>
+      <div class="pick"><div class="pick-head">${ic('appicon')}<span>${t('icon')}</span></div>${iconPicker()}</div>
       <div class="srow col"><span class="srow-ic">${ic('contrast')}</span><span class="srow-main"><span class="srow-label">${t('theme')}</span></span>${segmented('set-theme', st.theme, [['system', t('themeSystem')], ['light', t('themeLight')], ['dark', t('themeDark')]], 'small')}</div>
       <div class="srow col"><span class="srow-ic">${ic('globe')}</span><span class="srow-main"><span class="srow-label">${t('language')}</span></span>${segmented('set-lang', st.lang, [['system', t('langSystem')], ['zh', '中文'], ['en', 'English']], 'small')}</div>
     </div>
     <h2 class="sec">${t('dataSec')}</h2>
     <div class="group">
+      ${row('shieldCheck', t('storeWhere'), { value: isStandalone() ? t('storeApp') : isIOS ? t('storeSafari') : t('storeBrowser'), sub: S.persisted === true ? t('storePersist') : S.persisted === false ? t('storeNoPersist') : t('storeUnknown') })}
       ${row('import', t('importTitle'), { act: 'import-open' })}
       ${row('tag', t('categories'), { act: 'cats-open' })}
       ${row('archive', t('backupExport'), { act: 'backup-export', sub: t('lastBackup', { v: last == null ? t('never') : last === 0 ? t('todayAgo') : t('daysAgo', { n: last }) }) })}
@@ -825,7 +869,27 @@ function settingsView() {
     </div>
     <p class="foot-note">${t('ratesSource')}</p>
     <h2 class="sec">${t('about')}</h2>
-    <div class="group about">${rosetteMark('about-mark')}<p>${t('privacyText')}</p><p class="ver">${t('version')} ${APP_VERSION}</p></div>`;
+    <div class="group about">${themeMark('about-mark')}<p>${t('privacyText')}</p><p class="ver">${t('version')} ${APP_VERSION}</p></div>`;
+}
+
+function paletteSwatches() {
+  const cur = S.settings.palette;
+  return html`<div class="pals" role="radiogroup" aria-label="${t('palette')}">${PALETTES.map(p => html`<button class="pal ${p === cur ? 'on' : ''}" data-act="set-palette" data-v="${p}" data-palette="${p}" role="radio" aria-checked="${p === cur ? 'true' : 'false'}">
+    <span class="pal-note note-face" aria-hidden="true"><span class="pal-amt num">1,284<small>kr</small></span></span><span class="pal-name">${t('pal_' + p)}</span></button>`)}</div>`;
+}
+function iconPicker() {
+  const cur = PALETTES.includes(S.settings.icon) ? S.settings.icon : S.settings.palette;
+  const app = isStandalone();
+  const hint = app ? t('iconHintApp') : isIOS ? t('iconHintSafari') : '';
+  return html`<div class="icos" role="radiogroup" aria-label="${t('icon')}">${PALETTES.map(p => html`<button class="ico ${p === cur ? 'on' : ''}" data-act="set-icon" data-v="${p}" role="radio" aria-checked="${p === cur ? 'true' : 'false'}" aria-label="${t('pal_' + p)}"><img src="icons/${p}-180.png" alt="" width="56" height="56"></button>`)}</div>
+    ${hint ? html`<p class="pick-note">${hint}${app ? html` <button class="txt-btn" data-act="icon-steps">${t('iconSteps')}</button>` : ''}</p>` : ''}`;
+}
+function openIconSteps() {
+  const url = (location.host + location.pathname).replace(/index\.html$/, '');
+  openSheet({
+    id: 'icon-steps', title: t('iconStepsTitle'), left: html`<button class="txt-btn" data-act="sheet-close">${t('done')}</button>`,
+    body: html`<ol class="steps">${['iconStep1', 'iconStep2', 'iconStep3', 'iconStep4', 'iconStep5'].map(k => html`<li>${t(k, { url })}</li>`)}</ol>`,
+  });
 }
 
 /* ───────────────────────── sheets & dialogs ───────────────────────── */
@@ -1292,7 +1356,7 @@ function renderLock() {
   const wait = Math.ceil((st.until - Date.now()) / 1000);
   const msg = wait > 0 ? t('tooMany', { s: wait }) : L.msg;
   $('#lock').innerHTML = html`<div class="lock-inner">
-    ${rosetteMark('lock-mark')}
+    ${themeMark('lock-mark')}
     <h1 class="lock-title">${t('appName')}</h1>
     <p class="lock-sub ${msg ? 'err' : ''}" role="status">${msg || (L.mode === 'pin' ? t('enterPin') : t('lockedSub'))}</p>
     ${L.mode === 'pin'
@@ -1456,7 +1520,8 @@ async function decryptBackup(env, password) {
   return JSON.parse(td.decode(data));
 }
 function backupPayload() {
-  return { app: 'tally', v: 1, exportedAt: new Date().toISOString(), tx: S.tx, cats: S.cats, budget: S.budget, rules: S.rules, lastCat: S.lastCat, recentCur: S.recentCur };
+  const { palette, icon, theme, lang } = S.settings;
+  return { app: 'tally', v: 1, exportedAt: new Date().toISOString(), tx: S.tx, cats: S.cats, budget: S.budget, rules: S.rules, lastCat: S.lastCat, recentCur: S.recentCur, prefs: { palette, icon, theme, lang } };
 }
 function openBackupExport() {
   const body = (err = '') => html`<p class="lead">${t('backupWhy')}</p>
@@ -1483,7 +1548,7 @@ async function makeBackup(rec) {
 async function saveBackupFile(rec) {
   const ok = await shareOrDownload(rec.blob, rec.name);
   if (!ok) return;
-  S.settings.lastBackup = Date.now(); S.settings.nagAt = Date.now();
+  S.settings.lastBackup = Date.now(); S.settings.nagAt = Date.now(); S.settings.backupCount = S.tx.length;
   await saveSettings();
   closeSheet(rec);
   refreshAll();
@@ -1526,6 +1591,7 @@ async function confirmRestore(payload) {
   Object.assign(S, { tx: clean.tx, cats: clean.cats, budget: clean.budget, rules: clean.rules, lastCat: clean.lastCat, recentCur: clean.recentCur });
   sortTx();
   await Promise.all(['cats', 'budget', 'rules', 'lastCat', 'recentCur'].map(k => db.set(k, S[k])));
+  if (Object.keys(clean.prefs).length) { Object.assign(S.settings, clean.prefs); await saveSettings(); applyLang(); applyPalette(); }
   S.month = S.tx[0] ? monthOf(S.tx[0].date) : S.month;
   closeAllSheets();
   S.tab = 'home'; renderApp();
@@ -1553,7 +1619,12 @@ function sanitizeBackup(o) {
   const lastCat = {};
   for (const ty of ['expense', 'income']) if (ids.has(o.lastCat?.[ty])) lastCat[ty] = o.lastCat[ty];
   const recentCur = (Array.isArray(o.recentCur) ? o.recentCur : []).filter(c => /^[A-Z]{3}$/.test(c)).slice(0, 5);
-  return { tx, cats, budget, rules, lastCat, recentCur };
+  const pr = o.prefs && typeof o.prefs === 'object' ? o.prefs : {}, prefs = {};
+  if (PALETTES.includes(pr.palette)) prefs.palette = pr.palette;
+  if ('icon' in pr && (pr.icon === null || PALETTES.includes(pr.icon))) prefs.icon = pr.icon;
+  if (['system', 'light', 'dark'].includes(pr.theme)) prefs.theme = pr.theme;
+  if (['system', 'zh', 'en'].includes(pr.lang)) prefs.lang = pr.lang;
+  return { tx, cats, budget, rules, lastCat, recentCur, prefs };
 }
 async function exportCSV() {
   if (!await confirmDialog({ title: t('csvWarnTitle'), message: t('csvWarnMsg'), ok: t('csvOk') })) return;
@@ -2521,6 +2592,15 @@ const ACT = {
   },
   /* settings */
   'set-theme'(el) { S.settings.theme = el.dataset.v; saveSettings(); applyTheme(); renderView(); },
+  'set-palette'(el) { S.settings.palette = el.dataset.v; saveSettings(); applyPalette(); renderView(); },
+  'set-icon'(el) {
+    const v = el.dataset.v, changed = v !== (PALETTES.includes(S.settings.icon) ? S.settings.icon : S.settings.palette);
+    S.settings.icon = v; saveSettings(); applyPalette(); renderView();
+    if (changed && isStandalone() && !DEMO) openIconSteps();
+  },
+  'icon-steps'() { openIconSteps(); },
+  'reload-app'() { location.reload(); },
+  'safari-later'() { S.settings.safariNagAt = Date.now(); saveSettings(); renderView(); },
   'set-lang'(el) { S.settings.lang = el.dataset.v; saveSettings(); applyLang(); renderApp(); },
   'pin-change'() { changePin(); },
   'backup-export'() { if (DEMO) { toast(t('demoNoFile')); return; } openBackupExport(); },
@@ -2611,6 +2691,16 @@ const CHANGE = {
 /* ───────────────────────── theme, language, lifecycle ───────────────────────── */
 
 const HOST_THEME = document.documentElement.dataset.theme;
+function applyPalette() {
+  const p = PALETTES.includes(S.settings.palette) ? S.settings.palette : 'harbor';
+  document.documentElement.dataset.palette = p;
+  const icon = PALETTES.includes(S.settings.icon) ? S.settings.icon : p;
+  const link = $('link[rel="apple-touch-icon"]');
+  if (link) link.href = `icons/${icon}-180.png`;
+  const cover = $('#cover');
+  if (cover) cover.innerHTML = themeMark().s;
+  applyTheme();
+}
 function applyTheme() {
   const th = S.settings.theme;
   if (DEMO && th === 'system') { if (HOST_THEME) document.documentElement.dataset.theme = HOST_THEME; else delete document.documentElement.dataset.theme; }
@@ -2653,17 +2743,31 @@ function bindGlobal() {
     if (S.settings.lock.on && !S.locked && !external && away >= S.settings.lock.delay * 1000) lockApp();
     $('#cover').classList.remove('on');
     if (!S.locked && navigator.onLine) ensureLatestRates().catch(() => {});
+    checkForUpdate();
   });
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
-  window.addEventListener('online', () => { if (!S.locked) ensureLatestRates().catch(() => {}); });
+  window.addEventListener('online', () => { if (!S.locked) ensureLatestRates().catch(() => {}); checkForUpdate(); });
 }
 function registerSW() {
   if (DEMO || !('serviceWorker' in navigator) || !(location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) return;
   const hadController = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(e => console.warn('SW', e));
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+    .then(reg => { S.swReg = reg; setTimeout(() => checkForUpdate(true), 4000); })
+    .catch(e => console.warn('SW', e));
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (hadController) toast(t('updateReady'), { action: t('reload'), onAction: () => location.reload() });
+    if (!hadController || S.reloading) return;
+    // Right after launch with nothing open, switch to the new version straight away.
+    if (Date.now() - BOOT_AT < 8000 && !sheets.length && !S.settings.lock.on) { S.reloading = true; location.reload(); return; }
+    S.updateReady = true;
+    if (!S.locked) { renderView(); toast(t('updateReady'), { action: t('reload'), onAction: () => location.reload(), ms: 8000 }); }
   });
+}
+// A Home Screen app resumed from the background does not look for updates by itself.
+function checkForUpdate(force = false) {
+  if (!S.swReg || !navigator.onLine) return;
+  if (!force && Date.now() - (S.updateCheckedAt || 0) < 60e3) return;
+  S.updateCheckedAt = Date.now();
+  S.swReg.update().catch(() => {});
 }
 
 /* ───────────────────────── demo data (preview build only) ───────────────────────── */
@@ -2710,12 +2814,16 @@ async function boot() {
   const st = await db.get('settings');
   S.settings = { ...structuredClone(DEFAULT_SETTINGS), ...(st || {}) };
   S.settings.lock = { ...DEFAULT_SETTINGS.lock, ...(st?.lock || {}) };
-  applyLang(); applyTheme();
-  document.documentElement.style.setProperty('--note-art', noteArtURL());
-  $('#cover').innerHTML = rosetteMark().s;
+  applyLang();
+  document.documentElement.style.setProperty('--guilloche', noteArtURL());
+  applyPalette();
   bindGlobal();
   registerSW();
-  if (!DEMO) { try { navigator.storage?.persist?.().catch(() => {}); } catch { /* not allowed here */ } }
+  if (!DEMO) {
+    try {
+      navigator.storage?.persist?.().then(ok => { S.persisted = !!ok; if (!S.locked && S.tab === 'settings') renderView(); }).catch(() => {});
+    } catch { /* not allowed here */ }
+  }
   if (DEMO) seedDemo(); else await loadData();
   document.body.classList.add('ready');
   if (S.settings.lock.on && !DEMO) {

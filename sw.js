@@ -1,8 +1,9 @@
 /* Tally service worker: keeps the app working offline.
    Only the app's own files are cached. Your records live in IndexedDB, never here. */
-const VERSION = 'tally-1.0.1';
+const VERSION = 'tally-1.0.2';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './apple-touch-icon.png', './icon-192.png', './icon-512.png',
-  './stream-polyfill.js', './pdf.worker.shim.js', './pdf.min.js', './pdf.worker.min.js'];
+  './stream-polyfill.js', './pdf.worker.shim.js', './pdf.min.js', './pdf.worker.min.js',
+  './icons/harbor-180.png', './icons/ledger-180.png', './icons/receipt-180.png', './icons/piggy-180.png', './icons/coin-180.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
