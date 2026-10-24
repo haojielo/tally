@@ -2,7 +2,7 @@
  * Every record lives only in this browser's IndexedDB on this device.
  * The only network requests are exchange-rate lookups, which carry nothing but currency codes. */
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 const DEMO = document.documentElement.dataset.demo === '1';
 const BASE = 'SEK';
 const te = new TextEncoder();
@@ -49,7 +49,7 @@ const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^=
 const isStandalone = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-class AppError extends Error { constructor(code) { super(code); this.code = code; } }
+class AppError extends Error { constructor(code, cause) { super(code); this.code = code; this.cause = cause; } }
 
 /* ───────────────────────── strings ───────────────────────── */
 
@@ -107,6 +107,10 @@ const STR = {
     icaHow4: '把文件存到 iCloud 云盘或用 AirDrop 发到手机，再在这里选择文件。',
     impNothing: '没有识别到交易记录。可以展开“列对应”手动指定，或改用粘贴文本。', impOldXls: '这是旧版 .xls 格式，请在 Excel 或 Numbers 中另存为 .xlsx 或 CSV 后再导入。',
     impBadFile: '无法读取这个文件', impPdfFail: 'PDF 读取失败，可以改用 CSV 或粘贴文本', impPdfDemo: '预览版不支持 PDF，正式版可以',
+    impPdfNoText: '这个 PDF 里没有可以读取的文字，可能是扫描件。请改用 CSV、Excel，或者粘贴网银里的交易列表。', impPdfNeedPw: '这个 PDF 设了打开密码', impPdfWrongPw: '密码不对，请再试一次',
+    impPdfPwTitle: 'PDF 密码', impPdfPwLead: '这个 PDF 设了打开密码。密码只用来在这台手机上打开文件，不会保存。', impOpen: '打开', impAllDup: '这份账单里的交易之前都已经导入过了。',
+    diagLead: '下面的格式信息只保留了文件的结构：所有字母都换成了 a，数字都换成了 9，不含真实的金额、日期和名称，可以放心发给帮你排查的人。',
+    diagCopy: '复制格式信息', diagCopied: '格式信息已复制', diagSelect: '已选中格式信息，请手动复制', diagShow: '查看内容', diagWrong: '识别得不对？复制格式信息',
     impFound: '{n} 笔交易', impRange: '{a} 至 {b}', impDup: '{n} 笔之前已导入过，已自动跳过。', impUnchecked: '转账、未入账和可能已手动记过的 {n} 笔默认不导入，需要时可以勾选。',
     impAllPositive: '所有金额都是正数。如果这是信用卡账单，点“正负号互换”。', impFlip: '正负号互换', impAll: '全选', impNone: '全不选', impCur: '账单币种',
     impMap: '列对应', impMapSum: '日期 {d}，说明 {t}，金额 {a}', impColDate: '日期列', impColText: '说明列', impColAmt: '金额列', impColBal: '余额列（可选）', impColNone: '无',
@@ -173,6 +177,10 @@ const STR = {
     icaHow4: 'Move the file to your phone with iCloud Drive or AirDrop, then choose it here.',
     impNothing: 'No transactions found. Open “Columns” to map them by hand, or paste text instead.', impOldXls: 'This is an old .xls file. Save it as .xlsx or CSV in Excel or Numbers, then import again.',
     impBadFile: 'This file can’t be read', impPdfFail: 'Couldn’t read the PDF. Try CSV or paste text', impPdfDemo: 'PDF import works in the installed app, not the preview',
+    impPdfNoText: 'This PDF has no readable text (it may be a scan). Use CSV, Excel, or paste the list from your online bank.', impPdfNeedPw: 'This PDF is password-protected', impPdfWrongPw: 'Wrong password. Try again',
+    impPdfPwTitle: 'PDF password', impPdfPwLead: 'This PDF is password-protected. The password is only used to open the file on this phone and isn’t saved.', impOpen: 'Open', impAllDup: 'Every transaction in this statement was imported before.',
+    diagLead: 'This format info keeps only the file’s structure: every letter becomes a and every digit becomes 9, so it has no real amounts, dates or names. It’s safe to send to whoever is helping you.',
+    diagCopy: 'Copy format info', diagCopied: 'Format info copied', diagSelect: 'Format info selected. Copy it manually', diagShow: 'Show contents', diagWrong: 'Something wrong? Copy format info',
     impFound: '{n} transactions', impRange: '{a} to {b}', impDup: '{n} were imported before and are skipped.', impUnchecked: '{n} transfers, pending or possibly already recorded entries are unchecked. Tick any you want.',
     impAllPositive: 'Every amount is positive. If this is a credit card statement, tap “Flip signs”.', impFlip: 'Flip signs', impAll: 'Select all', impNone: 'Select none', impCur: 'Statement currency',
     impMap: 'Columns', impMapSum: 'Date {d}, description {t}, amount {a}', impColDate: 'Date', impColText: 'Description', impColAmt: 'Amount', impColBal: 'Balance (optional)', impColNone: 'None',
@@ -1597,6 +1605,9 @@ function parseAmount(v) {
   const n = parseFloat(s);
   return Number.isFinite(n) ? (neg ? -n : n) : NaN;
 }
+/* Dates. Statements write dates in many ways: 2026-10-01, 26-10-01, 01.10.2026, 1 okt, or 10-01 with the
+   year printed elsewhere. Unambiguous styles always parse; ambiguous ones are decided once per file by
+   detectDateCtx(), so every row of one statement is read the same way. */
 const SV_MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, maj: 5, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, okt: 10, oct: 10, nov: 11, dec: 12 };
 function mkDate(y, m, d) {
   y = +y; m = +m; d = +d;
@@ -1604,23 +1615,76 @@ function mkDate(y, m, d) {
   const dt = new Date(y, m - 1, d);
   return dt.getMonth() === m - 1 ? ymd(dt) : null;
 }
-function parseDate(v, excel = false) {
+const y2k = yy => 2000 + Number(yy);
+const DATE_FORMS = {
+  ymd2: { re: /^(\d{2})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/, f: m => [y2k(m[1]), m[2], m[3]] },
+  dmy2: { re: /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})(?!\d)/, f: m => [y2k(m[3]), m[2], m[1]] },
+  mdy4: { re: /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})(?!\d)/, f: m => [m[3], m[1], m[2]] },
+  c6: { re: /^(\d{2})(\d{2})(\d{2})(?!\d)/, f: m => [y2k(m[1]), m[2], m[3]] },
+  md: { re: /^(\d{1,2})[-/.](\d{1,2})(?!\d|[-/.]\d)/, f: (m, y) => [y, m[1], m[2]] },
+  dm: { re: /^(\d{1,2})[-/.](\d{1,2})(?!\d|[-/.]\d)/, f: (m, y) => [y, m[2], m[1]] },
+};
+const YEARLESS = new Set(['md', 'dm']);
+function parseDate(v, excel = false, ctx = null) {
   if (v == null) return null;
   const s = String(v).trim();
   let m;
   if (excel && /^\d{5}(\.\d+)?$/.test(s)) { const n = +s; if (n > 30000 && n < 80000) { const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(n) * 864e5); return mkDate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); } }
-  if ((m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))) return mkDate(m[1], m[2], m[3]);
+  if ((m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/))) return mkDate(m[1], m[2], m[3]);
   if ((m = s.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日/))) return mkDate(m[1], m[2], m[3]);
-  if ((m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/))) return mkDate(m[3], m[2], m[1]);
-  if ((m = s.match(/^(\d{4})(\d{2})(\d{2})(?:\D|$)/))) return mkDate(m[1], m[2], m[3]);
+  if ((m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})(?!\d)/))) return ctx?.d4 === 'mdy' ? mkDate(m[3], m[1], m[2]) : mkDate(m[3], m[2], m[1]);
+  if ((m = s.match(/^(\d{4})(\d{2})(\d{2})(?!\d)/))) return mkDate(m[1], m[2], m[3]);
   if ((m = s.match(/^(\d{1,2})\s+([a-zåäö]{3})[a-zåäö]*\.?(?:\s+(\d{4}))?/i)) && SV_MONTHS[m[2].toLowerCase()]) {
-    const mo = SV_MONTHS[m[2].toLowerCase()], now = new Date();
-    let y = m[3] ? +m[3] : now.getFullYear();
-    if (!m[3] && mo > now.getMonth() + 1) y--;
-    return mkDate(y, mo, m[1]);
+    const mo = SV_MONTHS[m[2].toLowerCase()];
+    if (m[3]) return mkDate(m[3], mo, m[1]);
+    return yearless(ctx?.year || new Date().getFullYear(), mo, m[1]);
+  }
+  const form = ctx && (ctx.y2 || (ctx.c6 ? 'c6' : null) || ctx.ny);
+  if (form && (m = s.match(DATE_FORMS[form].re))) {
+    const [y, mo, d] = DATE_FORMS[form].f(m, ctx.year);
+    return YEARLESS.has(form) ? yearless(y, mo, d) : mkDate(y, mo, d);
   }
   return null;
 }
+// A date printed without its year belongs to the statement's year, unless that puts it in the future.
+function yearless(y, mo, d) {
+  const r = mkDate(y, mo, d);
+  return r && r > addDays(todayStr(), 7) ? mkDate(y - 1, mo, d) : r;
+}
+function guessYear(text) {
+  const nowY = new Date().getFullYear(), counts = {};
+  for (const m of String(text || '').matchAll(/(?<!\d)((?:19|20)\d{2})(?!\d)/g)) {
+    const y = +m[1];
+    if (y >= nowY - 15 && y <= nowY + 1) counts[y] = (counts[y] || 0) + 1;
+  }
+  const best = Object.entries(counts).sort((a, b) => b[1] - a[1] || b[0] - a[0])[0];
+  return best ? +best[0] : nowY;
+}
+function detectDateCtx(samples, docText = '') {
+  const nowY = new Date().getFullYear();
+  const list = samples.map(s => String(s ?? '').trim()).filter(s => /^\d/.test(s)).slice(0, 500);
+  const ctx = { year: guessYear(docText), d4: null, y2: null, c6: false, ny: null, n: list.length, stats: {} };
+  if (!list.length) return ctx;
+  const plausible = r => !!r && +r.slice(0, 4) >= nowY - 15 && +r.slice(0, 4) <= nowY + 1;
+  const hits = (re, f) => list.filter(s => { const m = s.match(re); return m && plausible(mkDate(...f(m, ctx.year))); }).length;
+  const st = ctx.stats;
+  st.full = list.filter(s => plausible(parseDate(s))).length;
+  for (const [k, F] of Object.entries(DATE_FORMS)) st[k] = hits(F.re, F.f);
+  st.dmy4 = hits(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})(?!\d)/, m => [m[3], m[2], m[1]]);
+  if (st.mdy4 > st.dmy4) ctx.d4 = 'mdy';
+  const need = Math.max(2, Math.ceil(list.length * 0.5));
+  if (st.full < need) {
+    if (Math.max(st.ymd2, st.dmy2) >= need) ctx.y2 = st.ymd2 >= st.dmy2 ? 'ymd2' : 'dmy2';
+    else if (st.c6 >= need) ctx.c6 = true;
+    else if (Math.max(st.md, st.dm) >= need) {
+      const dash = list.filter(s => /^\d{1,2}-\d{1,2}(?!\d)/.test(s)).length * 2 > list.length;
+      ctx.ny = st.md > st.dm ? 'md' : st.dm > st.md ? 'dm' : dash ? 'md' : 'dm';
+    }
+  }
+  return ctx;
+}
+const ctxLabel = c => (c ? `${c.y2 || c.ny || (c.c6 ? 'c6' : c.d4 === 'mdy' ? 'mdy4' : 'full')} year=${c.year} n=${c.n} ${JSON.stringify(c.stats)}` : '—');
+
 function parseCSV(text, delim) {
   const rows = []; let row = [], field = '', q = false;
   for (let i = 0; i < text.length; i++) {
@@ -1647,31 +1711,38 @@ function detectDelim(text) {
   return best;
 }
 const HDR = {
-  date: /^(datum|date|bokf[oö]ringsdag|bokf[oö]ringsdatum|transaktionsdag|transaktionsdatum|valutadag|reskontradatum|transaction ?date|posting ?date|booking ?date|日期|交易日期|记账日期|交易时间|入账日期)$/i,
-  text: /^(text|beskrivning|specifikation|mottagare|rubrik|meddelande|transaktion|referens|description|details|transaction|merchant|payee|narrative|memo|name|摘要|交易摘要|交易说明|说明|商户|商户名称|对方户名|交易对方|备注)$/i,
-  amount: /^(belopp|amount|summa|transaktionsbelopp|belopp ?sek|amount ?sek|金额|交易金额|发生额|收支金额)$/i,
-  balance: /^(saldo|balance|behållning|bokfört saldo|余额|账户余额|交易后余额)$/i,
+  date: /^(datum|date|dag|bokf[oö]rd|bokf[oö]rt|bokf[oö]ringsdag|bokf[oö]ringsdatum|bokf\.? ?dag|transaktionsdag|transaktionsdatum|trans\.? ?dag|k[oö]pdag|k[oö]pdatum|valutadag|valutadatum|reskontradatum|transaction ?date|posting ?date|booking ?date|value ?date|日期|交易日期|记账日期|交易时间|入账日期)$/i,
+  text: /^(text|beskrivning|specifikation|mottagare|avs[aä]ndare|h[aä]ndelse|transaktionstext|rubrik|meddelande|transaktion|referens|description|details|transaction|merchant|payee|narrative|memo|name|摘要|交易摘要|交易说明|说明|商户|商户名称|对方户名|交易对方|备注)$/i,
+  amount: /^(belopp|amount|summa|kronor|transaktionsbelopp|belopp ?sek|belopp i|amount ?sek|金额|交易金额|发生额|收支金额)$/i,
+  balance: /^(saldo|balance|beh[aå]llning|bokf[oö]rt saldo|余额|账户余额|交易后余额)$/i,
   kind: /^(typ|type|transaktionstyp|budgetgrupp|kategori|category|交易类型|类型)$/i,
-  debit: /^(uttag|debit|debet|utgift|withdrawal|withdrawals|paid out|支出|支出金额|借方)$/i,
-  credit: /^(insättning|insattning|credit|kredit|inkomst|deposit|deposits|paid in|存入|收入|收入金额|贷方)$/i,
+  debit: /^(uttag|debit|debet|utgift|utgifter|withdrawal|withdrawals|paid out|支出|支出金额|借方)$/i,
+  credit: /^(ins[aä]ttning|ins[aä]ttningar|credit|kredit|inkomst|deposit|deposits|paid in|存入|收入|收入金额|贷方)$/i,
 };
-const normHead = s => String(s).toLowerCase().replace(/["']/g, '').replace(/\((kr|sek|元)\)|:$/g, '').replace(/\s+/g, ' ').trim();
+const NUMERIC_KEYS = new Set(['amount', 'balance', 'debit', 'credit']);
+const normHead = s => String(s).toLowerCase().replace(/["']/g, '').replace(/\((kr|sek|元)\)|:$/g, '').replace(/\s+(kr|sek)$/, '').replace(/\s+/g, ' ').trim();
+function headKey(cell) {
+  const h = normHead(cell);
+  if (!h || h.length > 40) return null;
+  const parts = [h, ...h.split(/\s*[/|]\s*/)];
+  for (const k of ['date', 'amount', 'balance', 'text', 'kind', 'debit', 'credit']) if (parts.some(p => HDR[k].test(p))) return k;
+  return null;
+}
 function detectColumns(rows) {
   for (let r = 0; r < Math.min(rows.length, 25); r++) {
-    const m = { headerRow: r, date: -1, text: -1, amount: -1, balance: -1, kind: [], debit: -1, credit: -1, conf: 'header' };
+    const m = { headerRow: r, date: -1, text: -1, amount: -1, balance: -1, kind: [], debit: -1, credit: -1, conf: 'header', ctx: null };
     rows[r].forEach((cell, i) => {
-      const h = normHead(cell);
-      if (!h) return;
-      if (m.date < 0 && HDR.date.test(h)) m.date = i;
-      else if (m.amount < 0 && HDR.amount.test(h)) m.amount = i;
-      else if (m.balance < 0 && HDR.balance.test(h)) m.balance = i;
-      else if (m.text < 0 && HDR.text.test(h)) m.text = i;
-      else if (HDR.kind.test(h)) m.kind.push(i);
-      else if (m.debit < 0 && HDR.debit.test(h)) m.debit = i;
-      else if (m.credit < 0 && HDR.credit.test(h)) m.credit = i;
+      const k = headKey(cell);
+      if (!k) return;
+      // with two date columns, the purchase date beats the posting date
+      if (k === 'date') { if (m.date < 0 || /transakt|transaction|k[oö]p/i.test(normHead(cell))) m.date = i; }
+      else if (k === 'kind') m.kind.push(i);
+      else if (m[k] < 0) m[k] = i;
     });
     if (m.date >= 0 && (m.amount >= 0 || m.debit >= 0 || m.credit >= 0)) {
-      if (m.text < 0) m.text = guessTextCol(rows.slice(r + 1, r + 31), [m.date, m.amount, m.balance, m.debit, m.credit, ...m.kind]);
+      const data = rows.slice(r + 1);
+      if (m.text < 0) m.text = guessTextCol(data.slice(0, 30), [m.date, m.amount, m.balance, m.debit, m.credit, ...m.kind]);
+      m.ctx = detectDateCtx(data.map(x => x[m.date]), rows.slice(0, 80).flat().join(' '));
       return m;
     }
   }
@@ -1692,12 +1763,16 @@ function guessTextCol(sample, exclude) {
 function inferColumns(rows) {
   const sample = rows.filter(r => r.length >= 2).slice(0, 40);
   const width = Math.max(0, ...sample.map(r => r.length));
-  const score = (i, fn) => sample.filter(r => fn(r[i])).length / Math.max(1, sample.length);
-  let date = -1, ds = 0;
-  for (let i = 0; i < width; i++) { const s = score(i, v => parseDate(v, true)); if (s > ds) { ds = s; date = i; } }
+  const docText = rows.slice(0, 80).flat().join(' ');
+  let date = -1, ds = 0, dctx = null;
+  for (let i = 0; i < width; i++) {
+    const c = detectDateCtx(sample.map(r => r[i]), docText);
+    const s = sample.filter(r => parseDate(r[i], true, c)).length / Math.max(1, sample.length);
+    if (s > ds) { ds = s; date = i; dctx = c; }
+  }
   const nums = [];
-  for (let i = 0; i < width; i++) if (i !== date && score(i, v => v && !Number.isNaN(parseAmount(v)) && /[.,]\d{2}\b|^-?\d+$/.test(String(v).trim())) > 0.7) nums.push(i);
-  const m = { headerRow: -1, date, text: guessTextCol(sample, [date, ...nums]), amount: nums.length ? nums[nums.length >= 2 ? nums.length - 2 : 0] : -1, balance: nums.length >= 2 ? nums[nums.length - 1] : -1, kind: [], debit: -1, credit: -1, conf: 'guess' };
+  for (let i = 0; i < width; i++) if (i !== date && sample.filter(r => r[i] && !Number.isNaN(parseAmount(r[i])) && /[.,]\d{2}\b|^-?\d+$/.test(String(r[i]).trim())).length / Math.max(1, sample.length) > 0.7) nums.push(i);
+  const m = { headerRow: -1, date, text: guessTextCol(sample, [date, ...nums]), amount: nums.length ? nums[nums.length >= 2 ? nums.length - 2 : 0] : -1, balance: nums.length >= 2 ? nums[nums.length - 1] : -1, kind: [], debit: -1, credit: -1, conf: 'guess', ctx: dctx };
   if (ds < 0.5 || m.amount < 0) m.conf = 'low';
   return m;
 }
@@ -1706,7 +1781,7 @@ function recsFromTable(table) {
   const recs = [];
   for (let r = map.headerRow + 1; r < rows.length; r++) {
     const row = rows[r];
-    const date = parseDate(row[map.date], excel);
+    const date = parseDate(row[map.date], excel, map.ctx);
     if (!date) continue;
     let amount;
     if (map.amount >= 0) amount = parseAmount(row[map.amount]);
@@ -1715,9 +1790,10 @@ function recsFromTable(table) {
       amount = (Number.isFinite(c) ? Math.abs(c) : 0) - (Number.isFinite(d) ? Math.abs(d) : 0);
     }
     if (!Number.isFinite(amount) || amount === 0) continue;
-    const text = (map.text >= 0 ? row[map.text] : '') || '';
+    const text = ((map.text >= 0 ? row[map.text] : '') || '').replace(/\s+/g, ' ').trim();
+    if (SUMMARY_LINE_RE.test(text)) continue;
     const balance = map.balance >= 0 ? parseAmount(row[map.balance]) : NaN;
-    recs.push({ date, text: text.replace(/\s+/g, ' ').trim(), amount: round2(amount), balance: Number.isFinite(balance) ? balance : null, kind: map.kind.map(i => row[i]).filter(Boolean).join(' ') });
+    recs.push({ date, text, amount: round2(amount), balance: Number.isFinite(balance) ? balance : null, kind: map.kind.map(i => row[i]).filter(Boolean).join(' ') });
   }
   return recs;
 }
@@ -1726,30 +1802,37 @@ function fromTable(rows, src, excel = false) {
   const table = { rows, map, excel };
   const head = map.headerRow >= 0 ? rows[map.headerRow].map(normHead) : [];
   const ica = head.includes('datum') && head.includes('text') && head.includes('belopp') && (head.includes('saldo') || head.includes('typ'));
-  return { source: ica ? 'ICA Banken' : src, recs: map.date >= 0 ? recsFromTable(table) : [], table };
+  return { source: ica ? 'ICA Banken' : src, recs: map.date >= 0 ? recsFromTable(table) : [], table, ctx: map.ctx };
 }
-const MONEY_RE = /(?<![\w.,])[-−–+]?\s?(?:\d{1,3}(?:[ \u00a0\u202f.,]\d{3})+|\d+)[.,]\d{2}(?:\s?(?:kr|sek))?(?![\w]|[.,]\d)|(?<![\w.,])[-−–+]?\s?\d+(?:[ \u00a0\u202f]\d{3})*\s?(?:kr|sek)(?![\w]|[.,]\d)/giu;
-const LINE_DATE_RE = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}\s+[a-zåäö]{3,9}\.?(?:\s+\d{4})?)(?![\d])/iu;
+
+/* Lines of text: pasted lists and PDFs without a recognisable table header. */
+const MONEY_RE = /(?<![\w.,])[-−–+]?\s?(?:\d{1,3}(?:[     .,]\d{3})+|\d+)[.,]\d{2}(?:\s?(?:kr|sek))?(?![\w]|[.,]\d)|(?<![\w.,])[-−–+]?\s?\d+(?:[     ]\d{3})*\s?(?:kr|sek)(?![\w]|[.,]\d)/giu;
+const MONEY_CELL_RE = /^[-−–+]?\s?(?:\d{1,3}(?:[\s.,']\d{3})+|\d+)[.,]\d{2}(?:\s?(?:kr|sek))?[-−]?$/iu;
+const LEAD_DATE_RE = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}[-/.]\d{1,2}(?:[-/.]\d{2,4})?|\d{6,8}|\d{1,2}\s+[a-zåäö]{3,9}\.?(?:\s+\d{4})?)(?!\d)/iu;
+const DATEISH_RE = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}[-/.]\d{1,2}(?:[-/.]\d{2,4})?|\d{6,8}|\d{1,2}\s+[a-zåäö]{3,9}\.?(?:\s+\d{4})?)$/iu;
 function moneyTokens(line) {
   const toks = [];
   for (const m of line.matchAll(MONEY_RE)) { const v = parseAmount(m[0]); if (Number.isFinite(v)) toks.push({ index: m.index, value: v }); }
   return toks;
 }
-function fromLines(lines, src) {
+function leadDate(line, ctx) {
+  const m = line.match(LEAD_DATE_RE);
+  if (!m) return null;
+  const d = parseDate(m[1], false, ctx);
+  return d ? { d, len: m[0].length } : null;
+}
+function fromLines(lines, src, ctx = null, docText = '') {
+  lines = lines.map(l => String(l).replace(/\s+/g, ' ').trim()).filter(Boolean);
+  ctx ||= detectDateCtx(lines.map(l => (l.match(LEAD_DATE_RE) || [])[1]).filter(Boolean), docText || lines.join('\n'));
   const recs = [];
   let date = null, buf = [];
   for (let line of lines) {
-    line = String(line).replace(/\s+/g, ' ').trim();
-    if (!line) continue;
-    let dm = line.match(LINE_DATE_RE);
-    if (dm) {
-      const d = parseDate(dm[1]);
-      if (d) {
-        date = d; buf = [];
-        line = line.slice(dm[0].length).trim();
-        const dm2 = line.match(LINE_DATE_RE);
-        if (dm2 && parseDate(dm2[1])) line = line.slice(dm2[0].length).trim();
-      }
+    const ld = leadDate(line, ctx);
+    if (ld) {
+      date = ld.d; buf = [];
+      line = line.slice(ld.len).trim();
+      const ld2 = leadDate(line, ctx);
+      if (ld2) line = line.slice(ld2.len).trim();
     }
     if (!date || !line) continue;
     const toks = moneyTokens(line);
@@ -1763,11 +1846,11 @@ function fromLines(lines, src) {
     const pick = toks.length >= 2 ? toks.slice(-2) : toks;
     recs.push({ date, text, amount: round2(pick[0].value), balance: pick[1] ? pick[1].value : null, alt: pick[1] ? round2(pick[1].value) : null, kind: '' });
   }
-  return { source: src, recs: resolveBalanceColumn(recs).filter(r => r.amount !== 0), table: null };
+  return { source: src, recs: resolveBalanceColumn(recs).filter(r => r.amount !== 0), table: null, ctx };
 }
 function resolveBalanceColumn(recs) {
   const two = recs.filter(r => r.alt != null);
-  if (two.length < 3) return recs;
+  if (two.length < 3) { recs.forEach(r => delete r.alt); return recs; }
   const fits = (amt, bal) => {
     let ok = 0;
     for (let i = 1; i < recs.length; i++) {
@@ -1784,12 +1867,17 @@ function resolveBalanceColumn(recs) {
 }
 function parseText(text, src) {
   const delim = detectDelim(text);
+  let res = null;
   if (delim === '\t' || delim === ';') {
     const rows = parseCSV(text, delim);
-    if (rows.length >= 2) { const res = fromTable(rows, src); if (res.recs.length) return res; }
+    if (rows.length >= 2) { const r = fromTable(rows, src); if (r.recs.length) res = r; }
   }
-  return fromLines(text.split(/\r?\n/), src);
+  res ||= fromLines(text.split(/\r?\n/), src);
+  res.diag = diagForRows(t('srcText'), res, res.table ? res.table.rows.map(r => r.join(' | ')) : text.split(/\r?\n/));
+  return res;
 }
+
+/* Excel and HTML tables */
 async function inflateRaw(u8) {
   if (!('DecompressionStream' in window)) throw new AppError('impBadFile');
   return pipeBytes(u8, new DecompressionStream('deflate-raw'));
@@ -1850,57 +1938,239 @@ function htmlTableRows(text) {
   const doc = new DOMParser().parseFromString(text, 'text/html');
   return [...doc.querySelectorAll('tr')].map(tr => [...tr.querySelectorAll('th,td')].map(c => c.textContent.replace(/\s+/g, ' ').trim())).filter(r => r.some(Boolean));
 }
-async function pdfLines(buf) {
+
+/* PDF statements. pdf.js reads the text; rows and columns are rebuilt from where each piece of text sits. */
+async function loadPdfjs() {
+  await import(new URL('./stream-polyfill.js', import.meta.url).href);
+  const pdfjs = await import(new URL('./pdf.min.js', import.meta.url).href);
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('./pdf.worker.shim.js', import.meta.url).href;
+  return pdfjs;
+}
+// Read text with a stream reader: Safari cannot iterate streams with `for await` yet.
+async function readTextItems(page) {
+  const reader = page.streamTextContent().getReader();
+  const items = [];
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (value?.items) items.push(...value.items);
+  }
+  return items;
+}
+async function pdfRead(buf, password) {
   if (DEMO) throw new AppError('impPdfDemo');
   let pdfjs;
+  try { pdfjs = await loadPdfjs(); } catch (e) { throw new AppError('impPdfFail', e); }
+  const task = pdfjs.getDocument({ data: buf.slice(), password: password || undefined, isEvalSupported: false, disableFontFace: true, useSystemFonts: false });
   try {
-    pdfjs = await import(new URL('./pdf.min.js', import.meta.url).href);
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('./pdf.worker.min.js', import.meta.url).href;
-  } catch (e) { console.error(e); throw new AppError('impPdfFail'); }
-  const task = pdfjs.getDocument({ data: buf, isEvalSupported: false, disableFontFace: true, useSystemFonts: false });
-  const doc = await task.promise;
-  const lines = [];
-  for (let p = 1; p <= doc.numPages; p++) {
-    const page = await doc.getPage(p);
-    const items = (await page.getTextContent()).items.filter(i => i.str && i.str.trim())
-      .map(i => ({ x: i.transform[4], y: i.transform[5], w: i.width, s: i.str, h: Math.abs(i.transform[3]) || 10 }))
-      .sort((a, b) => b.y - a.y || a.x - b.x);
-    let row = [], y0 = null;
-    const push = () => {
-      if (!row.length) return;
-      row.sort((a, b) => a.x - b.x);
-      let s = '', end = null;
-      for (const it of row) { if (end != null) s += it.x - end > 1.5 ? ' ' : ''; s += it.s; end = it.x + it.w; }
-      lines.push(s);
-      row = [];
-    };
-    for (const it of items) {
-      if (y0 != null && Math.abs(it.y - y0) > Math.max(2, it.h * 0.45)) { push(); y0 = null; }
-      if (y0 == null) y0 = it.y;
-      row.push(it);
+    const doc = await task.promise;
+    const pages = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const items = (await readTextItems(page)).filter(i => i.str && i.str.trim() && i.transform)
+        .map(i => ({ x: i.transform[4], y: i.transform[5], w: i.width || 0, s: i.str, h: Math.abs(i.transform[3]) || Math.abs(i.transform[0]) || 10 }));
+      pages.push({ items: items.length, rows: pdfRows(items) });
+      try { page.cleanup(); } catch { /* nothing to free */ }
     }
-    push();
+    return { version: pdfjs.version, numPages: doc.numPages, pages };
+  } catch (e) {
+    if (e?.name === 'PasswordException') throw new AppError(e.code === 2 ? 'impPdfWrongPw' : 'impPdfNeedPw', e);
+    throw e instanceof AppError ? e : new AppError('impPdfFail', e);
+  } finally {
+    try { await task.destroy(); } catch { /* already closed */ }
   }
-  try { await task.destroy(); } catch { /* already closed */ }
-  return lines;
 }
-async function parseImportFile(file) {
+// Group text pieces into rows by baseline, then into cells by the gaps between them.
+function pdfRows(items) {
+  const sorted = [...items].sort((a, b) => b.y - a.y || a.x - b.x);
+  const rows = [];
+  let cur = null;
+  for (const it of sorted) {
+    if (!cur || Math.abs(it.y - cur.y) > Math.max(2, Math.min(it.h, cur.h) * 0.45)) { cur = { y: it.y, h: it.h, items: [] }; rows.push(cur); }
+    cur.items.push(it);
+  }
+  for (const r of rows) {
+    r.items.sort((a, b) => a.x - b.x);
+    const cells = [];
+    for (const it of r.items) {
+      const c = cells[cells.length - 1];
+      const gap = c ? it.x - c.x1 : Infinity;
+      if (c && gap <= Math.max(3, it.h * 0.8)) {
+        c.s += gap > Math.max(1, it.h * 0.12) && !/\s$/.test(c.s) && !/^\s/.test(it.s) ? ' ' + it.s : it.s;
+        c.x1 = Math.max(c.x1, it.x + it.w);
+      } else cells.push({ x0: it.x, x1: it.x + it.w, s: it.s });
+    }
+    r.cells = cells.map(c => ({ ...c, s: c.s.replace(/\s+/g, ' ').trim() })).filter(c => c.s);
+    delete r.items;
+  }
+  return rows.filter(r => r.cells.length);
+}
+// Text printed too close together can merge into one cell that spans several columns (a date and the
+// description, or an amount and the balance). Split such a cell at its leading date and trailing amounts.
+function splitCell(c) {
+  const s = c.s;
+  const len = Math.max(1, s.length), at = k => c.x0 + ((c.x1 - c.x0) * k) / len;
+  const out = [];
+  let off = 0;
+  const lead = s.match(LEAD_DATE_RE);
+  if (lead && lead[0].length < s.length && /^\s+\S/.test(s.slice(lead[0].length))) {
+    out.push({ x0: c.x0, x1: at(lead[0].length), s: lead[1] });
+    off = s.length - s.slice(lead[0].length).trimStart().length;
+  }
+  const rest = s.slice(off);
+  const toks = [...rest.matchAll(MONEY_RE)];
+  let k = toks.length;
+  while (k > 0) {
+    const tk = toks[k - 1];
+    const end = k === toks.length ? rest.trimEnd().length : toks[k].index;
+    if (rest.slice(tk.index + tk[0].length, end).trim()) break;
+    k--;
+  }
+  if (k === toks.length) { out.push({ x0: at(off), x1: c.x1, s: rest.trim() }); return out.filter(x => x.s); }
+  const head = rest.slice(0, toks[k].index).trim();
+  if (head) out.push({ x0: at(off), x1: at(off + toks[k].index), s: head });
+  for (let j = k; j < toks.length; j++) out.push({ x0: at(off + toks[j].index), x1: at(off + toks[j].index + toks[j][0].length), s: toks[j][0].trim() });
+  return out.filter(x => x.s);
+}
+function nearestCol(cols, c, pool) {
+  const ids = pool && pool.length ? pool : cols.map((_, i) => i);
+  let best = ids[0], bestOv = -Infinity;
+  for (const i of ids) {
+    const ov = Math.min(c.x1, cols[i].x1) - Math.max(c.x0, cols[i].x0); // overlap, or minus the gap
+    if (ov > bestOv) { bestOv = ov; best = i; }
+  }
+  return best;
+}
+function assignCells(cols, rowCells) {
+  const spans = c => cols.filter(col => Math.min(c.x1, col.x1) - Math.max(c.x0, col.x0) > Math.min(6, (col.x1 - col.x0) * 0.3)).length;
+  const cells = rowCells.flatMap(c => (spans(c) >= 2 ? splitCell(c) : [c]));
+  const out = cols.map(() => []);
+  const numCols = cols.map((c, i) => (NUMERIC_KEYS.has(c.key) ? i : -1)).filter(i => i >= 0);
+  const dateCols = cols.map((c, i) => (c.key === 'date' ? i : -1)).filter(i => i >= 0);
+  const otherCols = cols.map((c, i) => (!NUMERIC_KEYS.has(c.key) && c.key !== 'date' ? i : -1)).filter(i => i >= 0);
+  const money = cells.filter(c => MONEY_CELL_RE.test(c.s));
+  const rest = cells.filter(c => !MONEY_CELL_RE.test(c.s));
+  // When a row has one amount per numeric column, their order settles which is which.
+  if (money.length && money.length === numCols.length) money.forEach((c, k) => out[numCols[k]].push(c.s));
+  else for (const c of money) out[nearestCol(cols, c, numCols)].push(c.s);
+  for (const c of rest) out[nearestCol(cols, c, DATEISH_RE.test(c.s) && dateCols.length ? dateCols : otherCols)].push(c.s);
+  return out.map(v => v.join(' ').trim());
+}
+function pdfTable(pdf, src) {
+  let header = null, cols = null, remap = null;
+  const out = [];
+  pdf.pages.forEach((pg, pi) => {
+    for (const row of pg.rows) {
+      const keys = row.cells.map(c => headKey(c.s));
+      if (keys.includes('date') && keys.some(k => k === 'amount' || k === 'debit' || k === 'credit')) {
+        cols = row.cells.map((c, i) => ({ x0: c.x0, x1: c.x1, key: keys[i], label: c.s }));
+        if (!header) { header = cols.map(c => c.label); remap = cols.map((_, i) => i); }
+        else {
+          // a repeated header on a later page: line its columns up with the first page's
+          const firstKeys = header.map(h => headKey(h));
+          remap = cols.map(c => { const j = header.findIndex(h => normHead(h) === normHead(c.label)); return j >= 0 ? j : firstKeys.indexOf(c.key); });
+        }
+        continue;
+      }
+      if (!cols) continue;
+      const vals = assignCells(cols, row.cells);
+      const strs = header.map(() => '');
+      vals.forEach((v, i) => { const j = remap[i]; if (j >= 0 && v) strs[j] = strs[j] ? `${strs[j]} ${v}` : v; });
+      out.push({ strs, y: row.y, h: row.h, page: pi });
+    }
+  });
+  if (!header || !out.length) return null;
+  const map = detectColumns([header, ...out.map(o => o.strs)]);
+  if (map.headerRow !== 0) return null;
+  const numIdx = [map.amount, map.debit, map.credit].filter(i => i >= 0);
+  const rows = [header];
+  let last = null;
+  for (const o of out) {
+    const s = o.strs;
+    const hasDate = !!parseDate(s[map.date], false, map.ctx);
+    const hasAmt = numIdx.some(i => Number.isFinite(parseAmount(s[i])));
+    const near = last && last.page === o.page && last.y - o.y <= Math.max(o.h, last.h) * 2.8;
+    if (!hasDate && !hasAmt) {
+      // a description that wrapped onto the next line belongs to the entry above it
+      const extra = s.filter(Boolean).join(' ');
+      if (near && map.text >= 0 && extra && !SUMMARY_LINE_RE.test(extra)) { last.row[map.text] = `${last.row[map.text]} ${extra}`.trim(); last.y = o.y; }
+      continue;
+    }
+    if (!hasDate) {
+      // statements that print each date once: later entries of that day inherit it
+      if (!near) continue;
+      s[map.date] = last.row[map.date];
+    }
+    if (SUMMARY_LINE_RE.test(map.text >= 0 ? s[map.text] : '')) { last = null; continue; }
+    rows.push(s);
+    last = { row: s, y: o.y, h: o.h, page: o.page };
+  }
+  const res = fromTable(rows, src, false);
+  res.header = header;
+  return res;
+}
+function fromPdf(pdf, src) {
+  const items = pdf.pages.reduce((a, p) => a + p.items, 0);
+  if (!items) throw new AppError('impPdfNoText');
+  const lines = pdf.pages.flatMap(p => p.rows.map(r => r.cells.map(c => c.s).join(' ')));
+  const table = pdfTable(pdf, src);
+  const plain = fromLines(lines, src, null, lines.join('\n'));
+  const useTable = table && table.recs.length && table.recs.length >= plain.recs.length * 0.8;
+  const res = useTable ? table : plain;
+  const sample = pdf.pages.slice(0, 2).flatMap(p => p.rows.map(r => r.cells.map(c => `${Math.round(c.x0)}:${maskText(c.s)}`).join('  ')));
+  res.diag = diagText([
+    `PDF · pdf.js ${pdf.version} · ${pdf.numPages} pages · ${items} text items`,
+    `table: ${table ? `${table.recs.length} found, header ${maskText(table.header.join(' | '))}` : 'no header row'} · lines: ${plain.recs.length} found · using ${useTable ? 'table' : 'lines'}`,
+    `dates: ${ctxLabel(res.ctx)}`,
+  ], sample);
+  return res;
+}
+
+/* Format info: the structure of a file with every letter turned into a and every digit into 9,
+   so someone helping can see the layout without seeing any amounts, names or dates. */
+const KEEP_WORDS = new Set(('datum date text typ belopp saldo summa bokförd bokfört bokföringsdag bokföringsdatum transaktionsdag transaktionsdatum valutadag '
+  + 'valutadatum reskontradatum specifikation beskrivning mottagare avsändare meddelande referens händelse uttag insättning insättningar kredit debet '
+  + 'ingående utgående kontoutdrag kontohändelser period sida av konto kr sek eur usd kortköp korttransaktion reservation reserverat överföring swish '
+  + 'autogiro avgift ränta budgetgrupp kategori jan feb mar apr maj jun jul aug sep okt nov dec januari februari mars april juni juli augusti september '
+  + 'oktober november december amount balance description total opening closing page of').split(' '));
+const maskWord = w => (KEEP_WORDS.has(w.toLowerCase()) ? w : w.replace(/\p{L}/gu, ch => (ch !== ch.toLowerCase() ? 'A' : 'a')));
+const maskText = s => String(s ?? '').replace(/\p{L}+/gu, maskWord).replace(/\d/g, '9');
+const errText = e => `${e?.name || 'Error'}: ${e?.message || e}`.replace(/\s+/g, ' ').slice(0, 300);
+function diagText(head, sample = []) {
+  return [`Tally ${APP_VERSION}`, `UA: ${navigator.userAgent}`, ...head, '---', ...sample.filter(l => String(l).trim()).slice(0, 70).map(l => String(l).slice(0, 180))].join('\n');
+}
+function diagForRows(kind, res, lines) {
+  return diagText([`${kind} · found ${res.recs.length}`, `dates: ${ctxLabel(res.ctx)}`], lines.map(maskText));
+}
+
+async function parseImportFile(file, password) {
   const buf = new Uint8Array(await file.arrayBuffer());
   if (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46) {
-    let lines;
-    try { lines = await pdfLines(buf); } catch (e) { console.error('PDF read failed', e); throw e instanceof AppError ? e : new AppError('impPdfFail'); }
-    return fromLines(lines, t('srcPDF'));
+    let pdf;
+    try { pdf = await pdfRead(buf, password); } catch (e) {
+      console.error('PDF read failed', e?.cause || e);
+      if (e instanceof AppError && e.code === 'impPdfFail') e.diag = diagText(['PDF', `error: ${errText(e.cause)}`]);
+      throw e instanceof AppError ? e : new AppError('impPdfFail', e);
+    }
+    return fromPdf(pdf, t('srcPDF'));
   }
-  if (buf[0] === 0x50 && buf[1] === 0x4B) return fromTable(await xlsxRows(buf), t('srcExcel'), true);
-  if (buf[0] === 0xD0 && buf[1] === 0xCF) throw new AppError('impOldXls');
-  const text = decodeText(buf);
-  if (/^\s*<(!doctype|html|table|\?xml)/i.test(text) || /<table[\s>]/i.test(text.slice(0, 4000))) {
-    const rows = htmlTableRows(text);
-    if (rows.length) return fromTable(rows, t('srcExcel'));
+  let res, lines;
+  if (buf[0] === 0x50 && buf[1] === 0x4B) { const rows = await xlsxRows(buf); res = fromTable(rows, t('srcExcel'), true); lines = rows.map(r => r.join(' | ')); }
+  else if (buf[0] === 0xD0 && buf[1] === 0xCF) throw new AppError('impOldXls');
+  else {
+    const text = decodeText(buf);
+    if (/^\s*<(!doctype|html|table|\?xml)/i.test(text) || /<table[\s>]/i.test(text.slice(0, 4000))) {
+      const rows = htmlTableRows(text);
+      if (rows.length) { res = fromTable(rows, t('srcExcel')); lines = rows.map(r => r.join(' | ')); }
+    }
+    if (!res) {
+      const rows = parseCSV(text, detectDelim(text));
+      if (rows.length >= 2 && rows.filter(r => r.length >= 3).length >= rows.length * 0.5) { res = fromTable(rows, t('srcCSV')); lines = rows.map(r => r.join(' | ')); }
+      else { res = fromLines(text.split(/\r?\n/), t('srcText')); lines = text.split(/\r?\n/); }
+    }
   }
-  const rows = parseCSV(text, detectDelim(text));
-  if (rows.length >= 2 && rows.filter(r => r.length >= 3).length >= rows.length * 0.5) return fromTable(rows, t('srcCSV'));
-  return fromLines(text.split(/\r?\n/), t('srcText'));
+  res.diag = diagForRows(res.source, res, lines);
+  return res;
 }
 
 /* ───────────────────────── statement import: review ───────────────────────── */
@@ -1963,15 +2233,62 @@ function openImport() {
         <button class="btn primary wide" data-act="imp-paste-go">${t('impRead')}</button>
       </div>
       <details class="howto"><summary>${t('icaHowTitle')}</summary><ol><li>${t('icaHow1')}</li><li>${t('icaHow2')}</li><li>${t('icaHow3')}</li><li>${t('icaHow4')}</li></ol></details>
-      <p class="hint err" id="imp-err" hidden></p>`,
+      <div id="imp-err" class="imp-err" hidden></div>`,
   });
   return rec;
 }
+const DIAG_CODES = new Set(['impPdfFail', 'impBadFile']);
 function importError(e) {
   console.warn('import', e);
-  const el = $('#imp-err');
-  const msg = e instanceof AppError ? t(e.code) : t('impBadFile');
-  if (el) { el.hidden = false; el.textContent = msg; } else toast(msg);
+  const box = $('#imp-err');
+  const code = e instanceof AppError ? e.code : 'impBadFile';
+  const msg = t(code);
+  if (!box) { toast(msg); return; }
+  const diag = DIAG_CODES.has(code) ? (e?.diag || diagText([`error: ${errText(e?.cause || e)}`])) : null;
+  box.hidden = false;
+  box.innerHTML = html`<p class="hint err">${msg}</p>${diag ? diagHTML(diag) : ''}`.s;
+}
+function diagHTML(text) {
+  S.diagText = text;
+  return html`<div class="diag"><p>${t('diagLead')}</p>
+    <button class="btn small" data-act="diag-copy">${ic('paste')}<span>${t('diagCopy')}</span></button>
+    <details><summary>${t('diagShow')}</summary><pre class="diag-pre">${text}</pre></details></div>`;
+}
+function copyDiag(el) {
+  const text = S.diagText || '';
+  const fallback = () => {
+    const pre = el.closest('.diag')?.querySelector('pre') || $$('.diag-pre').pop();
+    const d = pre?.closest('details');
+    if (d) d.open = true;
+    if (pre) { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+    toast(t('diagSelect'));
+  };
+  try { navigator.clipboard.writeText(text).then(() => toast(t('diagCopied')), fallback); } catch { fallback(); }
+}
+async function importFile(file, password) {
+  const errEl = $('#imp-err');
+  if (errEl) errEl.hidden = true;
+  const pwSheet = sheetById('pdf-pw');
+  try {
+    const res = await parseImportFile(file, password);
+    if (pwSheet) closeSheet(pwSheet);
+    startPreview(res);
+  } catch (e) {
+    if (e instanceof AppError && (e.code === 'impPdfNeedPw' || e.code === 'impPdfWrongPw')) { openPdfPassword(file, e.code === 'impPdfWrongPw'); return; }
+    if (pwSheet) closeSheet(pwSheet);
+    importError(e);
+  }
+}
+function openPdfPassword(file, wrong) {
+  const body = err => html`<p class="lead">${t('impPdfPwLead')}</p>
+    <div class="field"><input id="pdf-pw-in" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"></div>
+    ${err ? html`<p class="hint err">${t('impPdfWrongPw')}</p>` : ''}
+    <button class="btn primary wide" data-act="pdf-pw-go">${ic('lock')}<span>${t('impOpen')}</span></button>`;
+  let rec = sheetById('pdf-pw');
+  if (rec) rec.body(body(wrong));
+  else rec = openSheet({ id: 'pdf-pw', title: t('impPdfPwTitle'), body: body(wrong) });
+  rec.file = file;
+  setTimeout(() => rec.el.querySelector('#pdf-pw-in')?.focus(), 350);
 }
 function startPreview(res) {
   const P = { ...res, cur: BASE, flip: false };
@@ -1994,6 +2311,7 @@ function colOptions(P, field) {
   return html`${opts.map(([v, l]) => html`<option value="${v}" ${v === map[field] ? 'selected' : ''}>${l}</option>`)}`;
 }
 function previewBody(P) {
+  if (P.diag) S.diagText = P.diag;
   const list = P.cands.filter(c => !c.dup);
   const dups = P.cands.length - list.length;
   const off = list.filter(c => c.transfer || c.pending || c.maybe).length;
@@ -2016,7 +2334,9 @@ function previewBody(P) {
       <label><span>${t('impColText')}</span><select data-change="imp-map" data-f="text">${colOptions(P, 'text')}</select></label>
       <label><span>${t('impColAmt')}</span><select data-change="imp-map" data-f="amount">${colOptions(P, 'amount')}</select></label>
       <label><span>${t('impColBal')}</span><select data-change="imp-map" data-f="balance">${colOptions(P, 'balance')}</select></label></details>` : ''}
-    ${list.length ? html`<ul class="imp-list">${P.cands.map((c, i) => (c.dup ? '' : impRowHTML(c, i)))}</ul>` : html`<p class="hint err">${t('impNothing')}</p>`}`;
+    ${list.length ? html`<ul class="imp-list">${P.cands.map((c, i) => (c.dup ? '' : impRowHTML(c, i)))}</ul>${P.diag ? html`<button class="txt-btn diag-link" data-act="diag-copy">${t('diagWrong')}</button>` : ''}`
+    : P.cands.length ? html`<p class="hint">${t('impAllDup')}</p>`
+    : html`<p class="hint err">${t('impNothing')}</p>${P.diag ? diagHTML(P.diag) : ''}`}`;
 }
 function impRowHTML(c, i) {
   const cat = catById(c.cat);
@@ -2223,12 +2543,13 @@ const ACT = {
   'verify-pin'(el) { sheetById('verify')?.press(el.dataset.k); },
   'verify-face'() { sheetById('verify')?.face(); },
   /* import */
-  'imp-file'() {
-    pickFile(async f => {
-      const errEl = $('#imp-err'); if (errEl) errEl.hidden = true;
-      try { startPreview(await parseImportFile(f)); } catch (e) { importError(e); }
-    });
+  'imp-file'() { pickFile(f => importFile(f)); },
+  'pdf-pw-go'() {
+    const rec = sheetById('pdf-pw');
+    const pw = $('#pdf-pw-in')?.value || '';
+    if (rec && pw) importFile(rec.file, pw);
   },
+  'diag-copy'(el) { copyDiag(el); },
   'imp-paste'() { const box = $('#imp-paste-box'); box.hidden = !box.hidden; if (!box.hidden) $('#imp-text').focus(); },
   'imp-paste-go'() {
     const txt = $('#imp-text')?.value || '';
@@ -2281,6 +2602,7 @@ const CHANGE = {
     const P = S.imp;
     P.table.map[el.dataset.f] = +el.value;
     P.table.map.conf = 'user';
+    if (el.dataset.f === 'date') P.table.map.ctx = detectDateCtx(P.table.rows.slice(P.table.map.headerRow + 1).map(r => r[P.table.map.date]), P.table.rows.slice(0, 80).flat().join(' '));
     P.recs = recsFromTable(P.table);
     buildCands(P); P.rec.refresh();
   },
@@ -2317,6 +2639,7 @@ function bindGlobal() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && sheets.length) closeSheet();
     if (e.key === 'Enter' && e.target.id === 'f-note') e.target.blur();
+    if (e.key === 'Enter' && e.target.id === 'pdf-pw-in') { e.preventDefault(); ACT['pdf-pw-go'](); }
   });
   document.addEventListener('touchstart', () => {}, { passive: true });
   document.addEventListener('visibilitychange', () => {

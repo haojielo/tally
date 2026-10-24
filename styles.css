@@ -556,3 +556,15 @@ button.srow:active { background: color-mix(in srgb, var(--ink) 5%, transparent);
   .pinpad { grid-template-columns: repeat(3, 66px); gap: 12px 22px; }
   .pinpad button { width: 66px; height: 66px; font-size: 27px; }
 }
+
+/* format info for troubleshooting imports */
+.imp-err { margin-top: 12px; }
+.imp-err .hint { margin-top: 0; }
+.diag { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--sunk); }
+.diag p { font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.diag .btn { margin-top: 10px; }
+.diag details { margin-top: 10px; }
+.diag summary { font-size: 13px; font-weight: 500; color: var(--accent); cursor: pointer; }
+.diag-pre { max-height: 240px; overflow: auto; margin: 8px 0 0; padding: 10px; border-radius: 10px; background: var(--card); color: var(--ink-2); font: 11px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre; -webkit-user-select: text; user-select: text; }
+.diag-link { display: block; margin: 14px auto 2px; font-size: 14px; }
+.diag .btn { background: var(--card); color: var(--accent); }

@@ -43,4 +43,5 @@
 | `sw.js` | 离线缓存，没网也能打开 |
 | `manifest.webmanifest` 和 4 个 `.png` 图标 | 主屏幕图标与名称 |
 | `pdf.min.js` `pdf.worker.min.js` | Mozilla pdf.js（Apache-2.0 许可），只在导入 PDF 对账单时加载 |
+| `stream-polyfill.js` `pdf.worker.shim.js` | 补上 iPhone Safari 缺少的功能，让 PDF 导入在 iPhone 上也能运行 |
 | `.nojekyll` | 让 GitHub Pages 原样发布这些文件 |
