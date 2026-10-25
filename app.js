@@ -2,7 +2,7 @@
  * Every record lives only in this browser's IndexedDB on this device.
  * The only network requests are exchange-rate lookups, which carry nothing but currency codes. */
 
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.5';
 const BOOT_AT = Date.now();
 const DEMO = document.documentElement.dataset.demo === '1';
 const BASE = 'SEK';
@@ -136,6 +136,7 @@ const STR = {
     safariTitle: '这些记录存在 Safari 里', safariText: '主屏幕上的 Tally 看不到这里的记录，Safari 也可能清理很久没访问的网站数据。请导出加密备份，再到主屏幕的 Tally 里恢复。', exportBackup: '导出备份',
     nagNew: '上次备份以后又多了 {n} 笔记录。删除主屏幕图标或换手机时，没有备份的记录会一起消失。',
     monthSummary: '本月汇总', moreActions: '更多',
+    haptics: '触感反馈', hapticsSub: '保存、导入完成或输入有误时', backToTop: '回到顶部',
   },
   en: {
     appName: 'Tally', locale: 'en-US',
@@ -218,6 +219,7 @@ const STR = {
     safariTitle: 'These entries are in Safari', safariText: 'Tally on your Home Screen can’t see entries saved here, and Safari may clear data for sites you haven’t visited in a while. Export an encrypted backup and restore it in the Home Screen app.', exportBackup: 'Export backup',
     nagNew: '{n} new entries since your last backup. If the Home Screen icon is deleted or you change phones, they go with it.',
     monthSummary: 'Month summary', moreActions: 'More',
+    haptics: 'Haptics', hapticsSub: 'When you save, finish an import, or need to fix something', backToTop: 'Back to top',
   },
 };
 let LANG = 'zh';
@@ -278,6 +280,7 @@ const ICONS = {
   export: '<path d="M12 14.5v-11M7.5 8 12 3.5 16.5 8"/><path d="M4 15v3.5A2 2 0 0 0 6 20.5h12a2 2 0 0 0 2-2V15"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  haptic: '<rect x="8" y="3.5" width="8" height="17" rx="2.2"/><path d="M11 17.5h2M4.8 9v6M19.2 9v6M2 10.8v2.4M22 10.8v2.4"/>',
   trash: '<path d="M4.5 6.5h15M9.5 6.5v-2h5v2M6.5 6.5l1 13.5h9l1-13.5"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   chevL: '<path d="M14.5 5.5 8 12l6.5 6.5"/>',
@@ -368,6 +371,7 @@ const SUMMARY_LINE_RE = /^(ingående|utgående|saldo|summa|totalt|total|opening|
 
 const DEFAULT_SETTINGS = {
   lang: 'system', theme: 'system', palette: 'harbor', icon: null, display: 'SEK', lastBackup: null, backupCount: 0, hideInstall: false, nagAt: 0, safariNagAt: 0,
+  haptics: true,
   lock: { on: false, credId: null, pinHash: null, pinSalt: null, delay: 60, fails: 0, until: 0 },
 };
 const S = {
@@ -592,13 +596,16 @@ function donutHTML(items, total, centerLabel) {
   const segs = items.map(({ c, v }) => {
     const len = (v / total) * C;
     const d = Math.max(len - gap, 0.8);
-    const s = `<circle cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke="${c.color}" stroke-width="${sw}" stroke-dasharray="${d.toFixed(2)} ${(C - d).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"/>`;
+    const s = `<circle class="donut-seg" data-k="${esc(c.id)}" data-d="${d.toFixed(2)}" data-o="${off.toFixed(2)}" cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke="${c.color}" stroke-width="${sw}" stroke-dasharray="${d.toFixed(2)} ${(C - d).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"/>`;
     off += len;
     return s;
   }).join('');
   const [int] = moneyParts(total);
+  const ctx = `${S.stats.type}|${S.stats.mode}`;
+  // the mask's ring is what sweeps around when the chart first appears
   return raw(`<svg class="donut" viewBox="0 0 ${SZ} ${SZ}" role="img" aria-label="${esc(centerLabel)} ${esc(fmtD(total))}">
-    <g transform="rotate(-90 ${c0} ${c0})"><circle class="donut-track" cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke-width="${sw}"/>${segs}</g>
+    <defs><mask id="donut-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${SZ}" height="${SZ}"><circle class="donut-sweep" data-c="${C.toFixed(2)}" data-ctx="${esc(ctx)}" cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke="#fff" stroke-width="${sw + 2}" stroke-dasharray="${C.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="0"/></mask></defs>
+    <g transform="rotate(-90 ${c0} ${c0})"><circle class="donut-track" cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke-width="${sw}"/><g mask="url(#donut-mask)">${segs}</g></g>
     <text x="${c0}" y="${c0 - 12}" class="donut-k" text-anchor="middle">${esc(centerLabel)}</text>
     <text x="${c0}" y="${c0 + 22}" class="donut-v" text-anchor="middle">${esc(int)}<tspan class="donut-u" dx="4">${esc(unitOf(dispCur()))}</tspan></text></svg>`);
 }
@@ -627,7 +634,7 @@ function barsHTML(series, avg, hiIndex) {
       g += `<text class="axis" x="${(pl + cw * i + cw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(s.label)}</text>`;
   });
   if (avg > 0) { const ya = y(avg).toFixed(1); g += `<line class="avg" x1="${pl}" x2="${W - pr}" y1="${ya}" y2="${ya}"/>`; }
-  return raw(`<svg class="bars" viewBox="0 0 ${W} ${H}" role="img">${g}</svg>`);
+  return raw(`<svg class="bars" viewBox="0 0 ${W} ${H}" role="img" data-ctx="${esc(`${S.stats.type}|${S.stats.mode}`)}">${g}</svg>`);
 }
 function ringHTML(b) {
   const SZ = 168, sw = 13, r = (SZ - sw) / 2, C = 2 * Math.PI * r, c0 = SZ / 2;
@@ -635,7 +642,7 @@ function ringHTML(b) {
   const pctTxt = Math.round(b.pct * 100) + '%';
   return raw(`<svg class="ring ${b.level}" viewBox="0 0 ${SZ} ${SZ}" role="img" aria-label="${esc(pctTxt)} ${esc(t('used'))}">
     <circle class="ring-track" cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke-width="${sw}"/>
-    ${p > 0 ? `<circle class="ring-val" cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${(p * C).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 ${c0} ${c0})"/>` : ''}
+    ${p > 0 ? `<circle class="ring-val" data-c="${C.toFixed(2)}" data-p="${p.toFixed(4)}" cx="${c0}" cy="${c0}" r="${r}" fill="none" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${(p * C).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 ${c0} ${c0})"/>` : ''}
     <text x="${c0}" y="${c0 + 6}" class="ring-v" text-anchor="middle">${esc(pctTxt)}</text>
     <text x="${c0}" y="${c0 + 28}" class="ring-k" text-anchor="middle">${esc(t('used'))}</text></svg>`);
 }
@@ -643,7 +650,7 @@ function ringHTML(b) {
 /* ───────────────────────── small components ───────────────────────── */
 
 const tileHTML = (c, cls = '') => html`<span class="tile ${cls}" style="--c:${c.color}">${ic(c.icon)}</span>`;
-const segmented = (act, val, opts, cls = '') => html`<div class="seg ${cls}" role="tablist">${opts.map(([v, l]) => html`<button role="tab" aria-selected="${v === val ? 'true' : 'false'}" class="${v === val ? 'on' : ''}" data-act="${act}" data-v="${v}">${l}</button>`)}</div>`;
+const segmented = (act, val, opts, cls = '') => html`<div class="seg ${cls}" role="tablist"><i class="seg-thumb" aria-hidden="true"></i>${opts.map(([v, l]) => html`<button role="tab" aria-selected="${v === val ? 'true' : 'false'}" class="${v === val ? 'on' : ''}" data-act="${act}" data-v="${v}">${l}</button>`)}</div>`;
 const pinDots = n => html`<div class="pin-dots" aria-hidden="true">${[0, 1, 2, 3, 4, 5].map(i => html`<i class="${i < n ? 'on' : ''}"></i>`)}</div>`;
 const pinPadHTML = act => html`<div class="pinpad">${['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map(k => (k === ''
   ? html`<span></span>`
@@ -653,10 +660,12 @@ const pinPadHTML = act => html`<div class="pinpad">${['1', '2', '3', '4', '5', '
 
 function renderApp() {
   if (S.locked) return;
-  $('#app').innerHTML = html`<div class="view" id="view" data-tab="${S.tab}">${viewHTML()}</div>${tabbarHTML()}`.s;
+  $('#app').innerHTML = html`<div class="view" id="view" data-tab="${S.tab}">${viewHTML()}</div>
+    <div class="topbar" id="topbar"><button class="topbar-t" data-act="scroll-top" aria-label="${t('backToTop')}"></button></div>${tabbarHTML()}`.s;
   const v = $('#view');
-  v.addEventListener('scroll', () => v.classList.toggle('scrolled', v.scrollTop > 6), { passive: true });
+  v.addEventListener('scroll', () => updateTopbar(), { passive: true });
   v.scrollTop = S.scroll[S.tab] || 0;
+  afterRender();
 }
 function renderView(keep = true) {
   const v = $('#view');
@@ -666,6 +675,28 @@ function renderView(keep = true) {
   v.innerHTML = viewHTML().s;
   v.scrollTop = keep ? top : (S.scroll[S.tab] || 0);
   $$('.tabbar [data-tab]').forEach(b => { const on = b.dataset.tab === S.tab; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+  afterRender();
+}
+function afterRender() {
+  const v = $('#view');
+  if (!v) return;
+  syncSegs(v);
+  const enter = (S.tab === 'stats' && S.statsAnim === 'enter') || (S.tab === 'budget' && S.budgetAnim === 'enter');
+  S.statsAnim = S.budgetAnim = null;
+  rollNumbers(v);
+  animateMetrics(v, enter);
+  updateTopbar(true);
+}
+// The compact title shows once the large one has scrolled under it.
+function updateTopbar(relayout = false) {
+  const v = $('#view'), bar = $('#topbar');
+  if (!v || !bar) return;
+  if (relayout) {
+    const h = v.querySelector('.hero-title');
+    S.heroEdge = h ? h.offsetTop + h.offsetHeight - bar.offsetHeight : 1e9;
+    bar.firstElementChild.textContent = S.tab === 'home' ? fmtMonth(S.month) : t(S.tab === 'stats' ? 'tabStats' : S.tab === 'budget' ? 'tabBudget' : 'tabSettings');
+  }
+  bar.classList.toggle('on', v.scrollTop > S.heroEdge);
 }
 function refreshAll() { if (S.locked) return; renderView(); sheets.forEach(s => s.refresh?.()); }
 function viewHTML() {
@@ -727,53 +758,53 @@ function noteCardHTML(sum, count) {
   const dc = dispCur();
   const b = budgetStatus(S.month);
   const isNow = S.month === monthOf(todayStr());
-  return html`<div class="note-wrap"><section class="note" aria-label="${t('monthSummary')}">
+  return html`<div class="note-wrap" data-flip="note"><section class="note" aria-label="${t('monthSummary')}">
     <div class="note-top"><span class="note-label">${isNow ? t('spent') : t('spentIn', { m: fmtMonthName(S.month) })}</span>
       <button class="note-cur" data-act="disp-open" aria-label="${t('dispCur')}"><span class="flag">${flag(dc)}</span>${dc}${ic('chevDown', 'xs')}</button></div>
-    <div class="note-amt num"><span>${int}</span><span class="dec">${dec}</span><span class="cur">${unitOf(dc)}</span></div>
+    <div class="note-amt num" data-roll="note" data-ctx="${S.month}" data-v="${sum.e}"><span class="rp">${int}</span><span class="dec rp">${dec}</span><span class="cur">${unitOf(dc)}</span></div>
     <dl class="note-row">
       <div><dt>${t('income')}</dt><dd class="num">${fmtDN(sum.i)}</dd></div>
       <div><dt>${t('net')}</dt><dd class="num">${net < 0 ? MINUS : ''}${fmtDN(Math.abs(net))}</dd></div>
       <div><dt>${t('count')}</dt><dd class="num">${count}</dd></div>
     </dl>
     ${b ? html`<button class="note-budget ${b.level}" data-act="tab" data-tab="budget">
-        <span class="note-bar"><i style="width:${Math.min(100, b.pct * 100).toFixed(1)}%"></i></span>
+        <span class="note-bar"><i style="width:${Math.min(100, b.pct * 100).toFixed(1)}%" data-bar="note" data-ctx="${S.month}" data-w="${Math.min(100, b.pct * 100).toFixed(1)}"></i></span>
         <span class="note-bl"><span>${b.left >= 0 ? t('budgetLeft', { v: fmtD(b.left) }) : t('budgetOver', { v: fmtD(-b.left) })}</span>${b.perDay > 0 ? html`<span>${t('perDay', { v: fmtD(b.perDay) })}</span>` : ''}</span>
       </button>` : ''}
   </section></div>`;
 }
 function bannersHTML() {
   const out = [];
-  if (S.updateReady) out.push(html`<div class="banner"><span class="banner-ic">${ic('refresh')}</span><div><b>${t('updateReady')}</b><p>${t('updateBanner')}</p>
+  if (S.updateReady) out.push(html`<div class="banner" data-flip="bn:update"><span class="banner-ic">${ic('refresh')}</span><div><b>${t('updateReady')}</b><p>${t('updateBanner')}</p>
     <div class="banner-btns"><button class="btn small" data-act="reload-app">${t('reload')}</button></div></div></div>`);
-  if (DEMO) out.push(html`<div class="banner"><span class="banner-ic">${ic('info')}</span><p>${t('demoBanner')}</p></div>`);
-  if (S.volatile) out.push(html`<div class="banner warn"><span class="banner-ic">${ic('info')}</span><p>${t('volatile')}</p></div>`);
+  if (DEMO) out.push(html`<div class="banner" data-flip="bn:demo"><span class="banner-ic">${ic('info')}</span><p>${t('demoBanner')}</p></div>`);
+  if (S.volatile) out.push(html`<div class="banner warn" data-flip="bn:volatile"><span class="banner-ic">${ic('info')}</span><p>${t('volatile')}</p></div>`);
   const safari = !DEMO && isIOS && !isStandalone();
   if (safari && S.tx.length && Date.now() - (S.settings.safariNagAt || 0) > 3 * 864e5)
-    out.push(html`<div class="banner warn"><span class="banner-ic">${ic('info')}</span><div><b>${t('safariTitle')}</b><p>${t('safariText')}</p>
+    out.push(html`<div class="banner warn" data-flip="bn:safari"><span class="banner-ic">${ic('info')}</span><div><b>${t('safariTitle')}</b><p>${t('safariText')}</p>
       <div class="banner-btns"><button class="btn small" data-act="backup-export">${t('exportBackup')}</button><button class="btn small ghost" data-act="safari-later">${t('later')}</button></div></div></div>`);
-  else if (safari && !S.settings.hideInstall) out.push(html`<div class="banner"><span class="banner-ic">${ic('export')}</span><div><b>${t('installTitle')}</b><p>${t('installText')}</p></div><button class="icon-btn sm" data-act="hide-install" aria-label="${t('close')}">${ic('x')}</button></div>`);
+  else if (safari && !S.settings.hideInstall) out.push(html`<div class="banner" data-flip="bn:install"><span class="banner-ic">${ic('export')}</span><div><b>${t('installTitle')}</b><p>${t('installText')}</p></div><button class="icon-btn sm" data-act="hide-install" aria-label="${t('close')}">${ic('x')}</button></div>`);
   const last = S.settings.lastBackup, days = last ? Math.floor((Date.now() - last) / 864e5) : null;
   const fresh = S.tx.length - (S.settings.backupCount || 0);
   if (!DEMO && !safari && S.tx.length >= 10 && (days == null || days >= 14 || fresh >= 40) && Date.now() - (S.settings.nagAt || 0) > 3 * 864e5)
-    out.push(html`<div class="banner"><span class="banner-ic">${ic('archive')}</span><div><b>${t('nagTitle')}</b><p>${days == null ? t('nagNever') : days >= 14 ? t('nagText', { n: days }) : t('nagNew', { n: fresh })}</p>
+    out.push(html`<div class="banner" data-flip="bn:nag"><span class="banner-ic">${ic('archive')}</span><div><b>${t('nagTitle')}</b><p>${days == null ? t('nagNever') : days >= 14 ? t('nagText', { n: days }) : t('nagNew', { n: fresh })}</p>
       <div class="banner-btns"><button class="btn small" data-act="backup-export">${t('backupNow')}</button><button class="btn small ghost" data-act="nag-later">${t('later')}</button></div></div></div>`);
   return out;
 }
 function emptyHomeHTML() {
-  return html`<div class="empty">${themeMark()}<p class="empty-title">${t('emptyTitle')}</p><p class="empty-sub">${t('emptySub')}</p>
+  return html`<div class="empty" data-flip="empty">${themeMark()}<p class="empty-title">${t('emptyTitle')}</p><p class="empty-sub">${t('emptySub')}</p>
     <div class="empty-btns"><button class="btn primary" data-act="add">${ic('plus')}<span>${t('addFirst')}</span></button><button class="btn ghost" data-act="import-open">${ic('import')}<span>${t('importTitle')}</span></button></div></div>`;
 }
 function dayGroupHTML(g) {
   const s = sums(g.items);
-  return html`<section class="day"><h3 class="day-head"><span>${fmtDay(g.date)}</span><span class="day-sum num">${s.e ? `${t('expense')} ${fmtDN(s.e)}` : ''}${s.e && s.i ? '　' : ''}${s.i ? `${t('income')} ${fmtDN(s.i)}` : ''}</span></h3>
+  return html`<section class="day"><h3 class="day-head" data-flip="d:${g.date}"><span>${fmtDay(g.date)}</span><span class="day-sum num">${s.e ? `${t('expense')} ${fmtDN(s.e)}` : ''}${s.e && s.i ? '　' : ''}${s.i ? `${t('income')} ${fmtDN(s.i)}` : ''}</span></h3>
     <ul class="rows">${g.items.map(rowHTML)}</ul></section>`;
 }
 function rowHTML(x) {
   const c = catById(x.cat);
   const sign = x.type === 'expense' ? MINUS : '+';
   const disp = dispCur(), same = x.currency === disp;
-  return html`<li><button class="row" data-act="tx-edit" data-id="${x.id}">${tileHTML(c)}
+  return html`<li data-flip="t:${x.id}"><button class="row" data-act="tx-edit" data-id="${x.id}">${tileHTML(c)}
     <span class="row-main"><span class="row-title">${x.note || catName(c)}</span>${x.note ? html`<span class="row-sub">${catName(c)}</span>` : ''}</span>
     <span class="row-amt ${x.type === 'income' ? 'in' : ''}"><span class="num">${same ? sign + fmtNum(x.amount, dpOf(x.currency)) : fmtMoney(x.amount, x.currency, sign)}</span>${same ? '' : html`<span class="amt-sub num">${fmtD(val(x), sign)}</span>`}</span>
   </button></li>`;
@@ -835,7 +866,7 @@ function statsView() {
       <h2 class="sec">${t('byCategory')}</h2>
       <ul class="rank">${byCat.map(({ c, v, n }) => html`<li><button class="rank-row" data-act="cat-detail" data-cat="${c.id}">${tileHTML(c, 'sm')}
         <span class="rank-main"><span class="rank-top"><span class="rank-name">${catName(c)}</span><span class="rank-v num">${fmtDN(v)}</span></span>
-        <span class="rank-bar"><i style="width:${((v / byCat[0].v) * 100).toFixed(1)}%;background:${c.color}"></i></span>
+        <span class="rank-bar"><i style="width:${((v / byCat[0].v) * 100).toFixed(1)}%;background:${c.color}" data-bar="rk:${c.id}" data-ctx="${st.type}|${st.mode}" data-w="${((v / byCat[0].v) * 100).toFixed(1)}"></i></span>
         <span class="rank-meta"><span class="num">${fmtNum((v / total) * 100, 1)}%</span><span>${t('nEntries', { n })}</span></span></span></button></li>`)}</ul>
       <h2 class="sec">${st.mode === 'month' ? t('dailyTrend') : t('monthlyTrend')}</h2>
       <section class="panel chart">
@@ -866,7 +897,7 @@ function budgetView() {
       const c = catById(id), s = budgetStatus(ym, id);
       return html`<li><button class="cbud-row ${s.level}" data-act="catbudget-edit" data-cat="${id}">${tileHTML(c, 'sm')}
         <span class="rank-main"><span class="rank-top"><span class="rank-name">${catName(c)}</span><span class="rank-v num">${fmtDN(s.spent)}<small> / ${fmtDN(s.total, 0)}</small></span></span>
-        <span class="rank-bar"><i style="width:${Math.min(100, s.pct * 100).toFixed(1)}%"></i></span>
+        <span class="rank-bar"><i style="width:${Math.min(100, s.pct * 100).toFixed(1)}%" data-bar="cb:${id}" data-ctx="b" data-w="${Math.min(100, s.pct * 100).toFixed(1)}"></i></span>
         <span class="rank-meta"><span>${s.left >= 0 ? t('budgetLeft', { v: fmtD(s.left) }) : t('budgetOver', { v: fmtD(-s.left) })}</span><span class="num">${Math.round(s.pct * 100)}%</span></span></span></button></li>`;
     })}</ul>` : html`<p class="muted-line">${t('catBudgetEmpty')}</p>`}
     <button class="btn ghost wide" data-act="catbudget-add">${ic('plus')}<span>${t('addCatBudget')}</span></button>`;
@@ -886,7 +917,7 @@ function settingsView() {
   return html`${heroHTML({ kicker: `${t('appName')} ${APP_VERSION}`, title: t('tabSettings') })}
     <h2 class="sec">${t('security')}</h2>
     <div class="group">
-      ${row(L.credId || !L.on ? 'faceid' : 'lock', L.on && !L.credId ? t('pinLock') : t('faceLock'), { control: html`<label class="switch"><input type="checkbox" data-change="lock-toggle" ${L.on ? 'checked' : ''} ${DEMO ? 'disabled' : ''} aria-label="${t('faceLock')}"><i></i></label>` })}
+      ${row(L.credId || !L.on ? 'faceid' : 'lock', L.on && !L.credId ? t('pinLock') : t('faceLock'), { control: html`<label class="switch"><input type="checkbox" switch data-change="lock-toggle" ${L.on ? 'checked' : ''} ${DEMO ? 'disabled' : ''} aria-label="${t('faceLock')}"><i></i></label>` })}
       ${L.on ? html`${row('clock', t('autoLock'), { value: (delays.find(d => d[0] === L.delay) || delays[1])[1], control: html`<select class="overlay-select" data-change="lock-delay" aria-label="${t('autoLock')}">${delays.map(([v, l]) => html`<option value="${v}" ${v === L.delay ? 'selected' : ''}>${l}</option>`)}</select>` })}
         ${row('key', t('changePin'), { act: 'pin-change' })}` : ''}
     </div>
@@ -896,6 +927,7 @@ function settingsView() {
       <div class="pick"><div class="pick-head">${ic('appicon')}<span>${t('icon')}</span></div>${iconPicker()}</div>
       <div class="srow col"><span class="srow-ic">${ic('contrast')}</span><span class="srow-main"><span class="srow-label">${t('theme')}</span></span>${segmented('set-theme', st.theme, [['system', t('themeSystem')], ['light', t('themeLight')], ['dark', t('themeDark')]], 'small')}</div>
       <div class="srow col"><span class="srow-ic">${ic('globe')}</span><span class="srow-main"><span class="srow-label">${t('language')}</span></span>${segmented('set-lang', st.lang, [['system', t('langSystem')], ['zh', '中文'], ['en', 'English']], 'small')}</div>
+      ${hapticsAvailable() ? row('haptic', t('haptics'), { sub: t('hapticsSub'), control: html`<label class="switch"><input type="checkbox" switch data-change="set-haptics" ${st.haptics !== false ? 'checked' : ''} aria-label="${t('haptics')}"><i></i></label>` }) : ''}
     </div>
     <h2 class="sec">${t('dataSec')}</h2>
     <div class="group">
@@ -962,6 +994,187 @@ function openIconSteps() {
   });
 }
 
+/* ───────────────────────── motion & haptics ───────────────────────── */
+/* Motion here follows Apple's lead: it only answers something the user did, it is brief, it shows where
+   things went (a new row slides in, numbers roll, the selected segment glides), and it gives way to
+   dissolves when Reduce Motion is on. Haptics are kept for moments that matter: saving, finishing an
+   import or backup, and input that needs fixing. Switches add their own system tick. */
+const EASE = 'cubic-bezier(.32, .72, 0, 1)';
+const EASE_OUT = 'cubic-bezier(.22, 1, .36, 1)';
+const motionOK = () => !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden;
+function anim(el, frames, opts = {}) {
+  if (!el?.animate || !motionOK()) return null;
+  try { return el.animate(frames, { duration: 320, easing: EASE_OUT, fill: 'backwards', ...opts }); } catch { return null; }
+}
+// Safari has no Vibration API, but on iOS 18 and later toggling a native switch (<input type=checkbox switch>)
+// plays the system's light haptic. It only plays during a tap, so call this from tap handlers.
+let hxLabel = null;
+const VIBRATE = { tap: 8, success: [8, 100, 12], error: [12, 60, 12, 60, 12] };
+const hapticsAvailable = () => isIOS || typeof navigator.vibrate === 'function';
+function haptic(kind = 'tap') {
+  if (S.settings?.haptics === false) return;
+  try {
+    if (!isIOS) { navigator.vibrate?.(VIBRATE[kind] || 8); return; }
+    if (!hxLabel) {
+      hxLabel = document.createElement('label');
+      hxLabel.className = 'hx'; hxLabel.setAttribute('aria-hidden', 'true'); hxLabel.style.display = 'none';
+      const inp = document.createElement('input');
+      inp.type = 'checkbox'; inp.setAttribute('switch', ''); inp.tabIndex = -1;
+      hxLabel.appendChild(inp);
+      document.head.appendChild(hxLabel);
+    }
+    const tick = () => hxLabel.click();
+    tick();
+    if (kind === 'success') setTimeout(tick, 110);
+    if (kind === 'error') { setTimeout(tick, 70); setTimeout(tick, 140); }
+  } catch { /* no haptics on this device */ }
+}
+
+// The selected segment is one pill that glides to the tapped option, even across a re-render.
+const segMem = new Map();
+function syncSegs(root = document) {
+  for (const seg of root.querySelectorAll('.seg')) {
+    const th = seg.querySelector('.seg-thumb'), on = seg.querySelector('button.on');
+    if (!th) continue;
+    if (!on || !on.offsetWidth) { seg.classList.remove('live'); continue; }
+    const key = on.dataset.act, cur = { x: on.offsetLeft, w: on.offsetWidth };
+    const prev = segMem.get(key);
+    if (!seg.classList.contains('live')) {
+      const from = prev && motionOK() ? prev : cur;
+      th.style.transition = 'none';
+      th.style.setProperty('--x', from.x + 'px'); th.style.setProperty('--w', from.w + 'px');
+      seg.classList.add('live');
+      void th.offsetWidth;
+      th.style.transition = '';
+    }
+    th.style.setProperty('--x', cur.x + 'px'); th.style.setProperty('--w', cur.w + 'px');
+    segMem.set(key, cur);
+  }
+}
+
+// Numbers that change in place roll digit by digit: up when the value grows, down when it shrinks.
+const rollMem = new Map();
+function rollNumbers(root) {
+  for (const el of root.querySelectorAll('[data-roll]')) {
+    const key = el.dataset.roll, ctx = el.dataset.ctx || '', v = +el.dataset.v || 0;
+    const parts = [...el.querySelectorAll('.rp')], texts = parts.map(p => p.textContent);
+    const prev = rollMem.get(key);
+    rollMem.set(key, { ctx, v, texts });
+    if (!prev || prev.ctx !== ctx || !motionOK() || prev.texts.join('|') === texts.join('|')) continue;
+    const up = v >= prev.v;
+    parts.forEach((p, i) => rollPart(p, prev.texts[i] ?? '', texts[i], up));
+  }
+}
+function rollPart(span, a, b, up) {
+  if (a === b) return;
+  const n = Math.max(a.length, b.length), A = a.padStart(n), B = b.padStart(n), dir = up ? 1 : -1;
+  span.textContent = '';
+  for (let i = 0; i < n; i++) {
+    const ch = B[i];
+    if (ch === ' ') continue;
+    if (A[i] === ch) { span.append(ch); continue; }
+    const cell = document.createElement('span'), nw = document.createElement('span');
+    cell.className = 'rc'; nw.className = 'rn'; nw.textContent = ch; cell.append(nw);
+    span.append(cell);
+    const delay = (n - 1 - i) * 18;
+    anim(nw, [{ transform: `translateY(${0.55 * dir}em)`, opacity: 0, filter: 'blur(3px)' }, { transform: 'none', opacity: 1, filter: 'blur(0px)' }], { duration: 480, easing: EASE, delay });
+    if (A[i] !== ' ') {
+      const g = document.createElement('span');
+      g.className = 'rg'; g.textContent = A[i]; g.setAttribute('aria-hidden', 'true'); cell.append(g);
+      const ga = anim(g, [{ transform: 'none', opacity: 1, filter: 'blur(0px)' }, { transform: `translateY(${-0.55 * dir}em)`, opacity: 0, filter: 'blur(3px)' }], { duration: 380, easing: EASE, delay, fill: 'both' });
+      if (ga) ga.onfinish = () => g.remove(); else g.remove();
+    }
+  }
+}
+
+// Bars, rings and the donut grow in when a chart first appears, and move from their old values when
+// the numbers change (another month, a new entry). Nothing moves on a plain refresh.
+const barMem = new Map();
+function animateMetrics(root, enter) {
+  const morph = (key, ctx, val) => { const prev = barMem.get(key); barMem.set(key, { ctx, val }); return enter ? 0 : prev && prev.ctx === ctx ? prev.val : null; };
+  for (const el of root.querySelectorAll('[data-bar]')) {
+    const w = +el.dataset.w, from = morph(el.dataset.bar, el.dataset.ctx || '', w);
+    if (from == null || Math.abs(from - w) < 0.3) continue;
+    anim(el, [{ width: `${from}%` }, { width: `${w}%` }], { duration: enter ? 600 : 500, easing: EASE, delay: enter ? 80 : 0 });
+  }
+  const cols = [...root.querySelectorAll('.bars .col')];
+  const cctx = root.querySelector('.bars')?.dataset.ctx || '';
+  cols.forEach((el, i) => {
+    const h = +el.getAttribute('height'), from = morph('col' + i, cctx, h);
+    if (!(h > 0) || from == null || Math.abs(from - h) < 0.5) return;
+    anim(el, [{ transform: `scaleY(${from / h})` }, { transform: 'none' }], { duration: enter ? 560 : 460, easing: EASE, delay: enter ? 50 + (i / cols.length) * 150 : 0 });
+  });
+  const ring = root.querySelector('.ring-val');
+  if (ring) {
+    const C = +ring.dataset.c, p = +ring.dataset.p, from = morph('ring', 'b', p);
+    if (from != null && Math.abs(from - p) > 0.002) anim(ring, [{ strokeDasharray: `${from * C}px ${C}px` }, { strokeDasharray: `${p * C}px ${C}px` }], { duration: enter ? 700 : 520, easing: EASE, delay: enter ? 50 : 0 });
+  } else if (S.tab === 'budget') barMem.set('ring', { ctx: 'b', val: 0 });
+  const sweep = root.querySelector('.donut-sweep');
+  if (sweep) {
+    const C = +sweep.dataset.c, dctx = sweep.dataset.ctx;
+    if (enter) anim(sweep, [{ strokeDashoffset: `${C}px` }, { strokeDashoffset: '0px' }], { duration: 650, easing: EASE });
+    for (const sg of root.querySelectorAll('.donut-seg')) {
+      const d = +sg.dataset.d, o = +sg.dataset.o, prev = barMem.get('dn:' + sg.dataset.k);
+      barMem.set('dn:' + sg.dataset.k, { ctx: dctx, val: [d, o] });
+      if (enter || !prev || prev.ctx !== dctx) continue;
+      const [pd, po] = prev.val;
+      if (Math.abs(pd - d) < 0.3 && Math.abs(po - o) < 0.3) continue;
+      anim(sg, [{ strokeDasharray: `${pd}px ${C - pd}px`, strokeDashoffset: `${-po}px` }, { strokeDasharray: `${d}px ${C - d}px`, strokeDashoffset: `${-o}px` }], { duration: 520, easing: EASE });
+    }
+  }
+}
+
+// Rows that stay glide to their new place, new rows fade in, removed ones fade out where they were.
+function flipSnap() {
+  const v = $('#view');
+  if (!v || !motionOK()) return null;
+  const vr = v.getBoundingClientRect(), map = new Map();
+  for (const el of v.querySelectorAll('[data-flip]')) {
+    const r = el.getBoundingClientRect();
+    if (r.bottom > vr.top - 240 && r.top < vr.bottom + 240) map.set(el.dataset.flip, { el, r });
+  }
+  return { map, month: S.month, tab: S.tab, search: S.search };
+}
+function flipPlay(snap, fresh) {
+  const v = $('#view');
+  if (!snap || !v || snap.tab !== S.tab || !motionOK()) return;
+  const vr = v.getBoundingClientRect(), same = snap.month === S.month && snap.search === S.search, seen = new Set();
+  let order = 0;
+  for (const el of v.querySelectorAll('[data-flip]')) {
+    const k = el.dataset.flip; seen.add(k);
+    const r = el.getBoundingClientRect();
+    if (r.bottom < vr.top - 240 || r.top > vr.bottom + 240) continue;
+    const old = snap.map.get(k);
+    if (old && same) {
+      const dy = old.r.top - r.top;
+      if (Math.abs(dy) > 0.5) anim(el, [{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 460, easing: EASE });
+    } else if (!old && (same || fresh?.has(k))) {
+      anim(el, [{ opacity: 0, transform: 'translateY(-6px) scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: EASE, delay: 150 + Math.min(order++, 12) * 28 });
+    }
+  }
+  if (!same) return;
+  for (const [k, { el, r }] of snap.map) {
+    if (seen.has(k)) continue;
+    const g = el.cloneNode(true);
+    g.removeAttribute('data-flip'); g.classList.add('flip-ghost'); g.setAttribute('aria-hidden', 'true'); g.inert = true;
+    g.querySelectorAll('[id],[data-act],[data-flip]').forEach(n => { n.removeAttribute('id'); n.removeAttribute('data-act'); n.removeAttribute('data-flip'); });
+    Object.assign(g.style, { position: 'absolute', left: `${r.left - vr.left}px`, top: `${r.top - vr.top + v.scrollTop}px`, width: `${r.width}px`, margin: '0', pointerEvents: 'none' });
+    v.appendChild(g);
+    const a = anim(g, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.97)' }], { duration: 260, easing: 'ease-out', fill: 'forwards' });
+    const rm = () => g.remove();
+    if (a) a.onfinish = rm; else rm();
+    setTimeout(rm, 600);
+  }
+}
+const withFlip = (fn, fresh) => { const snap = flipSnap(); fn(); flipPlay(snap, fresh); };
+// Moving between months slides the content the way the arrows point.
+function slideIn(el, dir) { anim(el, [{ opacity: 0, transform: `translateX(${dir * 22}px)` }, { opacity: 1, transform: 'none' }], { duration: 360, easing: EASE }); }
+// Theme, style and language changes cross-fade where the browser can.
+function withTransition(fn) {
+  if (document.startViewTransition && motionOK()) { try { document.startViewTransition(fn); return; } catch { /* fall through */ } }
+  fn();
+}
+
 /* ───────────────────────── sheets & dialogs ───────────────────────── */
 
 const sheets = [];
@@ -978,12 +1191,13 @@ function openSheet({ id = '', title = '', titleHTML, body, left, right, foot, ta
     </div>`.s;
   $('#sheets').appendChild(wrap);
   const rec = { el: wrap, id, onClose };
-  rec.body = h => { const b = wrap.querySelector('.sheet-body'); const top = b.scrollTop; b.innerHTML = h.s; b.scrollTop = top; };
+  rec.body = h => { const b = wrap.querySelector('.sheet-body'); const top = b.scrollTop; b.innerHTML = h.s; b.scrollTop = top; syncSegs(wrap); };
   rec.foot = h => { const f = wrap.querySelector('.sheet-foot'); if (f) f.innerHTML = h.s; };
   sheets.push(rec);
   wrap.getBoundingClientRect();
   requestAnimationFrame(() => wrap.classList.add('open'));
   bindDrag(wrap.querySelector('.sheet'), rec);
+  syncSegs(wrap);
   return rec;
 }
 function closeSheet(rec = sheets[sheets.length - 1], instant = false) {
@@ -1011,9 +1225,10 @@ function scrollerIn(el, stop) {
   return null;
 }
 let dragTapBlock = 0;
-document.addEventListener('click', e => { if (Date.now() < dragTapBlock) { e.stopPropagation(); e.preventDefault(); } }, true);
+document.addEventListener('click', e => { if (Date.now() < dragTapBlock && !e.target.closest?.('.hx')) { e.stopPropagation(); e.preventDefault(); } }, true);
 function bindDrag(sheet, rec) {
   let y0 = null, x0 = 0, dy = 0, t0 = 0, mode = null, scroller = null;
+  const bd = rec.el.querySelector('.sheet-backdrop');
   sheet.addEventListener('touchstart', e => {
     y0 = null;
     if (e.touches.length !== 1 || e.target.closest('input,select,textarea,.sheet-foot,[data-nodrag]')) return;
@@ -1027,7 +1242,7 @@ function bindDrag(sheet, rec) {
       if (Math.abs(d) < 6 && Math.abs(dx) < 6) return;
       // only a downward pull with the content already at its top moves the sheet; anything else scrolls
       if (d > 0 && d > Math.abs(dx) && (!scroller || scroller.scrollTop <= 0)) {
-        mode = 'drag'; y0 = y; t0 = Date.now(); sheet.style.transition = 'none';
+        mode = 'drag'; y0 = y; t0 = Date.now(); sheet.style.transition = 'none'; if (bd) bd.style.transition = 'none';
         document.activeElement?.blur?.();
       } else { mode = 'scroll'; return; }
     }
@@ -1035,6 +1250,7 @@ function bindDrag(sheet, rec) {
     if (e.cancelable) e.preventDefault();
     dy = Math.max(0, y - y0);
     sheet.style.transform = `translateY(${dy}px)`;
+    if (bd) bd.style.opacity = String(Math.max(0, 1 - dy / Math.max(240, sheet.offsetHeight)));
   }, { passive: false });
   const end = () => {
     if (y0 == null) return;
@@ -1043,6 +1259,7 @@ function bindDrag(sheet, rec) {
     if (!dragged) return;
     dragTapBlock = Date.now() + 400;
     sheet.style.transition = ''; sheet.style.transform = '';
+    if (bd) { bd.style.transition = ''; bd.style.opacity = ''; }
     if (dy > 110 || (dy > 30 && dy / Math.max(1, Date.now() - t0) > 0.6)) closeSheet(rec);
   };
   sheet.addEventListener('touchend', end);
@@ -1060,22 +1277,22 @@ function confirmDialog({ title, message, ok = t('ok'), cancel = t('cancel'), dan
       const b = e.target.closest('[data-r]');
       if (!b) return;
       e.stopPropagation();
-      w.classList.remove('open');
-      setTimeout(() => w.remove(), 220);
+      w.classList.add('closing'); w.classList.remove('open');
+      setTimeout(() => w.remove(), 240);
       res(b.dataset.r === '1');
     });
   });
 }
 let toastTimer;
-function toast(msg, { action, onAction, ms = 2400 } = {}) {
+function toast(msg, { action, onAction, ms = 2400, icon } = {}) {
   const el = $('#toast');
-  el.innerHTML = html`<span>${msg}</span>${action ? html`<button data-act="toast-action">${action}</button>` : ''}`.s;
+  el.innerHTML = html`${icon ? html`<span class="toast-ic">${ic(icon, 'sm')}</span>` : ''}<span>${msg}</span>${action ? html`<button data-act="toast-action">${action}</button>` : ''}`.s;
   S.toastAction = onAction || null;
   el.classList.add('on');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('on'), action ? Math.max(ms, 6000) : ms);
 }
-function shake(sel) { const el = typeof sel === 'string' ? $(sel) : sel; if (!el) return; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+function shake(sel) { haptic('error'); const el = typeof sel === 'string' ? $(sel) : sel; if (!el) return; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 
 /* ───────────────────────── exchange rates ───────────────────────── */
 
@@ -1263,6 +1480,7 @@ function openEntry(tx) {
     onClose: () => { F = null; },
   });
   if (F.cur !== BASE && !tx) loadRate();
+  fitAmount();
 }
 // The rate is kept as kronor per unit but shown against the app's currency (or kronor when they're the same).
 function rateQuote() {
@@ -1292,7 +1510,15 @@ function keypadHTML() {
     ${k('7')}${k('8')}${k('9')}${k('-', MINUS, 'fn')}
     ${k('.', '.', dpOf(F.cur) ? '' : 'dim')}${k('0')}<button class="save ${F.type}" data-act="kp-save" id="kp-save">${hasOp(F.expr) ? '=' : t('save')}</button>`;
 }
-const updAmount = () => { const el = $('#f-amount'); if (el && F) el.innerHTML = amountHTML().s; const s = $('#kp-save'); if (s && F) s.textContent = hasOp(F.expr) ? '=' : t('save'); };
+const updAmount = () => { const el = $('#f-amount'); if (el && F) el.innerHTML = amountHTML().s; const s = $('#kp-save'); if (s && F) s.textContent = hasOp(F.expr) ? '=' : t('save'); fitAmount(); };
+// Like the Calculator display, a long amount gets smaller rather than being cut off.
+function fitAmount() {
+  const el = $('#f-amount .amt-big');
+  if (!el) return;
+  el.style.fontSize = '';
+  const cw = el.clientWidth, sw = el.scrollWidth;
+  if (cw && sw > cw + 1) el.style.fontSize = Math.max(20, Math.floor(parseFloat(getComputedStyle(el).fontSize) * (cw / sw))) + 'px';
+}
 function kpPress(k) {
   let e = F.expr;
   const dp = dpOf(F.cur);
@@ -1322,9 +1548,10 @@ function loadRate() {
   });
 }
 async function saveEntry() {
-  if (hasOp(F.expr)) { const v = evalExpr(F.expr); F.expr = v > 0 ? trimNum(v, dpOf(F.cur)) : ''; updAmount(); if (!(v > 0)) toast(t('negative')); return; }
+  if (hasOp(F.expr)) { const v = evalExpr(F.expr); F.expr = v > 0 ? trimNum(v, dpOf(F.cur)) : ''; updAmount(); if (!(v > 0)) { shake('#f-amount .amt-big'); toast(t('negative')); } return; }
   const amt = evalExpr(F.expr);
   if (!(amt > 0)) { shake('#f-amount .amt-big'); toast(t('enterAmount')); return; }
+  if (F.cur === BASE || F.rate > 0) haptic('tap');
   if (F.ratePromise) { const form = F; await Promise.race([F.ratePromise, new Promise(r => setTimeout(r, 4000))]); if (F !== form) return; }
   if (F.cur !== BASE && !(F.rate > 0)) { toast(t('needRate')); openRateSheet(); return; }
   const rate = F.cur === BASE ? 1 : F.rate;
@@ -1341,11 +1568,14 @@ async function saveEntry() {
   if (F.cur !== BASE) { S.recentCur = [F.cur, ...S.recentCur.filter(c => c !== F.cur)].slice(0, 5); db.set('recentCur', S.recentCur); }
   const isNew = !F.orig;
   if (tx.currency !== dispCur()) ensureDispSeries();
+  const snap = flipSnap();
   closeSheet(sheetById('entry'));
   if (isNew && S.tab === 'home' && monthOf(tx.date) !== S.month && !S.search) S.month = monthOf(tx.date);
   refreshAll();
-  if (isNew && S.tab === 'home' && !sheets.length) { const v = $('#view'); v?.scrollTo({ top: 0, behavior: 'smooth' }); }
-  toast(t('saved'));
+  flipPlay(snap, new Set(['t:' + tx.id]));
+  const shown = S.tab === 'home' && !S.search && !sheets.length && monthOf(tx.date) === S.month;
+  if (isNew && shown) { const v = $('#view'); v?.scrollTo({ top: 0, behavior: motionOK() ? 'smooth' : 'auto' }); }
+  if (!shown) toast(t('saved'), { icon: 'check' });
 }
 function openRateSheet() {
   const { Q, q } = rateQuote();
@@ -1411,7 +1641,7 @@ async function saveCat(rec) {
   closeSheet(rec);
   rec.onSaved?.(saved);
   refreshAll();
-  toast(t('catSaved'));
+  toast(t('catSaved'), { icon: 'check' });
 }
 function normalizeOrder() {
   for (const type of ['expense', 'income']) {
@@ -1521,6 +1751,7 @@ function lockApp() {
   $('#app').innerHTML = '';
   S.lockUI = { mode: S.settings.lock.credId ? 'face' : 'pin', entered: '', msg: '' };
   renderLock();
+  $('#lock').classList.remove('out');
   $('#lock').hidden = false;
 }
 function renderLock() {
@@ -1539,10 +1770,11 @@ function renderLock() {
 }
 function unlockApp() {
   S.locked = false;
-  $('#lock').hidden = true;
-  $('#lock').innerHTML = '';
+  const lk = $('#lock');
   renderApp();
   syncRates();
+  const done = () => { if (S.locked) return; lk.hidden = true; lk.innerHTML = ''; lk.classList.remove('out'); };
+  if (motionOK()) { lk.classList.add('out'); setTimeout(done, 300); } else done();
 }
 async function lockFace() {
   try {
@@ -1693,8 +1925,8 @@ async function decryptBackup(env, password) {
   return JSON.parse(td.decode(data));
 }
 function backupPayload() {
-  const { palette, icon, theme, lang, display } = S.settings;
-  return { app: 'tally', v: 1, exportedAt: new Date().toISOString(), tx: S.tx, cats: S.cats, budget: S.budget, rules: S.rules, lastCat: S.lastCat, recentCur: S.recentCur, prefs: { palette, icon, theme, lang, display } };
+  const { palette, icon, theme, lang, display, haptics } = S.settings;
+  return { app: 'tally', v: 1, exportedAt: new Date().toISOString(), tx: S.tx, cats: S.cats, budget: S.budget, rules: S.rules, lastCat: S.lastCat, recentCur: S.recentCur, prefs: { palette, icon, theme, lang, display, haptics } };
 }
 function openBackupExport() {
   const body = (err = '') => html`<p class="lead">${t('backupWhy')}</p>
@@ -1714,6 +1946,7 @@ async function makeBackup(rec) {
     const env = await encryptBackup(backupPayload(), pw);
     rec.blob = new Blob([JSON.stringify(env)], { type: 'application/json' });
     rec.name = `tally-backup-${todayStr()}.json`;
+    haptic('success');
     rec.body(html`<div class="done-state">${ic('shieldCheck', 'big')}<p class="empty-title">${t('backupReady')}</p><p class="empty-sub">${t('backupReadySub')}</p>
       <button class="btn primary wide" data-act="bk-save">${ic('export')}<span>${t('saveFile')}</span></button></div>`);
   } catch (e) { console.error(e); rec.err(String(e?.message || e)); }
@@ -1725,7 +1958,7 @@ async function saveBackupFile(rec) {
   await saveSettings();
   closeSheet(rec);
   refreshAll();
-  toast(t('backupDone'));
+  toast(t('backupDone'), { icon: 'check' });
 }
 function pickFile(cb, accept = '') {
   const inp = $('#file-in');
@@ -1768,7 +2001,8 @@ async function confirmRestore(payload) {
   S.month = S.tx[0] ? monthOf(S.tx[0].date) : S.month;
   closeAllSheets();
   S.tab = 'home'; renderApp();
-  toast(t('restored', { n: clean.tx.length }));
+  haptic('success');
+  toast(t('restored', { n: clean.tx.length }), { icon: 'check' });
 }
 function sanitizeBackup(o) {
   if (!o || o.app !== 'tally' || !Array.isArray(o.tx)) throw new Error('invalid');
@@ -1798,6 +2032,7 @@ function sanitizeBackup(o) {
   if (['system', 'light', 'dark'].includes(pr.theme)) prefs.theme = pr.theme;
   if (['system', 'zh', 'en'].includes(pr.lang)) prefs.lang = pr.lang;
   if (typeof pr.display === 'string' && /^[A-Z]{3}$/.test(pr.display)) prefs.display = pr.display;
+  if (typeof pr.haptics === 'boolean') prefs.haptics = pr.haptics;
   return { tx, cats, budget, rules, lastCat, recentCur, prefs };
 }
 async function exportCSV() {
@@ -1806,7 +2041,7 @@ async function exportCSV() {
   const lines = [['date', 'type', 'category', 'amount', 'currency', 'rate_to_SEK', 'amount_SEK', 'note'].join(',')];
   for (const x of [...S.tx].reverse()) lines.push([x.date, x.type, catName(catById(x.cat)), x.amount, x.currency, x.rate, x.base, x.note].map(q).join(','));
   const ok = await shareOrDownload(new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv' }), `tally-${todayStr()}.csv`);
-  if (ok) toast(t('csvDone'));
+  if (ok) toast(t('csvDone'), { icon: 'check' });
 }
 async function eraseAll() {
   if (!await confirmDialog({ title: t('eraseTitle'), message: t('eraseMsg'), ok: t('eraseOk'), danger: true })) return;
@@ -2703,11 +2938,14 @@ async function confirmImport(P) {
   let learned = false;
   for (const c of chosen) if (c.manual && c.text) { S.rules[merchantKey(c.text)] = c.cat; learned = true; }
   if (learned) await db.set('rules', S.rules);
+  const snap = flipSnap();
   closeAllSheets();
   S.imp = null; S.tab = 'home'; S.search = ''; S.searchOpen = false;
   S.month = monthOf(txs.map(x => x.date).sort().pop());
   renderApp();
-  toast(t('impDone', { n: txs.length }));
+  flipPlay(snap ? { ...snap, tab: 'home' } : null, new Set(txs.map(x => 't:' + x.id)));
+  haptic('success');
+  toast(t('impDone', { n: txs.length }), { icon: 'check' });
   ensureDispSeries();
 }
 
@@ -2715,23 +2953,32 @@ async function confirmImport(P) {
 
 const ACT = {
   tab(el) {
-    const v = $('#view'); if (v) S.scroll[S.tab] = v.scrollTop;
+    const v = $('#view');
     const to = el.dataset.tab;
+    if (to === S.tab && el.classList.contains('tab')) { v?.scrollTo({ top: 0, behavior: motionOK() ? 'smooth' : 'auto' }); return; }
+    if (v) S.scroll[S.tab] = v.scrollTop;
     if (to === 'stats' && S.stats.mode === 'year' && S.tab !== 'stats') S.statsYear = +S.month.slice(0, 4);
+    if (to !== S.tab) { if (to === 'stats') S.statsAnim = 'enter'; if (to === 'budget') S.budgetAnim = 'enter'; }
     S.tab = to;
     renderView(false);
   },
+  'scroll-top'() { $('#view')?.scrollTo({ top: 0, behavior: motionOK() ? 'smooth' : 'auto' }); },
   add() { openEntry(null); },
   'tx-edit'(el) { const tx = S.tx.find(x => x.id === el.dataset.id); if (tx) openEntry(tx); },
-  'month-step'(el) { S.month = addMonths(S.month, +el.dataset.d); S.statsYear = +S.month.slice(0, 4); renderView(); },
+  'month-step'(el) {
+    const d = +el.dataset.d;
+    S.month = addMonths(S.month, d); S.statsYear = +S.month.slice(0, 4);
+    renderView();
+    if (S.tab === 'home') slideIn($('#home-body'), d);
+  },
   'search-toggle'() {
     S.searchOpen = !S.searchOpen; if (!S.searchOpen) S.search = '';
     renderView();
     if (S.searchOpen) $('#search-in')?.focus();
   },
   'import-open'() { openImport(); },
-  'hide-install'() { S.settings.hideInstall = true; saveSettings(); renderView(); },
-  'nag-later'() { S.settings.nagAt = Date.now(); saveSettings(); renderView(); },
+  'hide-install'() { S.settings.hideInstall = true; saveSettings(); withFlip(() => renderView()); },
+  'nag-later'() { S.settings.nagAt = Date.now(); saveSettings(); withFlip(() => renderView()); },
   'sheet-close'() { closeSheet(); },
   'toast-action'() { $('#toast').classList.remove('on'); S.toastAction?.(); },
   bar(el) {
@@ -2740,8 +2987,8 @@ const ACT = {
     const tip = $('#chart-tip'); if (tip) tip.textContent = el.dataset.tip;
   },
   /* stats */
-  'stats-mode'(el) { S.stats.mode = el.dataset.v; if (S.stats.mode === 'year') S.statsYear = +S.month.slice(0, 4); renderView(); },
-  'stats-type'(el) { S.stats.type = el.dataset.v; renderView(); },
+  'stats-mode'(el) { if (S.stats.mode === el.dataset.v) return; S.stats.mode = el.dataset.v; if (S.stats.mode === 'year') S.statsYear = +S.month.slice(0, 4); S.statsAnim = 'enter'; renderView(); },
+  'stats-type'(el) { if (S.stats.type === el.dataset.v) return; S.stats.type = el.dataset.v; S.statsAnim = 'enter'; renderView(); },
   'stats-step'(el) {
     const d = +el.dataset.d;
     if (S.stats.mode === 'month') S.month = addMonths(S.month, d); else S.statsYear += d;
@@ -2766,6 +3013,7 @@ const ACT = {
     F.cat = lc && S.cats.some(c => c.id === lc) ? lc : catsOf(F.type)[0]?.id;
     const sh = sheetById('entry');
     sh.el.querySelectorAll('[data-act="f-type"]').forEach(b => { const on = b.dataset.v === F.type; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+    syncSegs(sh.el);
     $('#f-cats').innerHTML = catGridHTML().s;
     $('#kp').innerHTML = keypadHTML().s;
     updAmount();
@@ -2798,9 +3046,11 @@ const ACT = {
     const id = F.orig.id;
     await db.del(id);
     S.tx = S.tx.filter(x => x.id !== id);
+    const snap = flipSnap();
     closeSheet(sheetById('entry'));
     refreshAll();
-    toast(t('deleted'));
+    flipPlay(snap);
+    if (!(S.tab === 'home' && !S.search && !sheets.length)) toast(t('deleted'), { icon: 'check' });
   },
   'rate-save'() {
     const v = parseAmount($('#rate-in')?.value);
@@ -2848,7 +3098,7 @@ const ACT = {
     }
     if (rec.catId) S.budget.cats[rec.catId] = roundDp(v, dpOf(D)); else S.budget.total = roundDp(v, dpOf(D));
     await db.set('budget', S.budget);
-    closeSheet(rec); refreshAll(); toast(t('budgetSaved'));
+    closeSheet(rec); refreshAll(); toast(t('budgetSaved'), { icon: 'check' });
   },
   async 'budget-remove'() {
     const rec = sheetById('budget');
@@ -2857,12 +3107,12 @@ const ACT = {
     closeSheet(rec); refreshAll(); toast(t('budgetRemoved'));
   },
   /* settings */
-  'set-theme'(el) { S.settings.theme = el.dataset.v; saveSettings(); applyTheme(); renderView(); },
+  'set-theme'(el) { if (S.settings.theme === el.dataset.v) return; S.settings.theme = el.dataset.v; saveSettings(); withTransition(() => { applyTheme(); renderView(); }); },
   'set-disp'(el) { setDisplay(el.dataset.v); },
   'disp-open'() { openDispPicker(); },
   'disp-pick'(el) { setDisplay(el.dataset.c); },
   'disp-other'() { openCurrencySheet(dispCur(), c => setDisplay(c)); },
-  'set-palette'(el) { S.settings.palette = el.dataset.v; saveSettings(); applyPalette(); renderView(); },
+  'set-palette'(el) { if (S.settings.palette === el.dataset.v) return; S.settings.palette = el.dataset.v; saveSettings(); withTransition(() => { applyPalette(); renderView(); }); },
   'set-icon'(el) {
     const v = el.dataset.v, changed = v !== (PALETTES.includes(S.settings.icon) ? S.settings.icon : S.settings.palette);
     S.settings.icon = v; saveSettings(); applyPalette(); renderView();
@@ -2870,8 +3120,8 @@ const ACT = {
   },
   'icon-steps'() { openIconSteps(); },
   'reload-app'() { location.reload(); },
-  'safari-later'() { S.settings.safariNagAt = Date.now(); saveSettings(); renderView(); },
-  'set-lang'(el) { S.settings.lang = el.dataset.v; saveSettings(); applyLang(); renderApp(); },
+  'safari-later'() { S.settings.safariNagAt = Date.now(); saveSettings(); withFlip(() => renderView()); },
+  'set-lang'(el) { if (S.settings.lang === el.dataset.v) return; S.settings.lang = el.dataset.v; saveSettings(); withTransition(() => { applyLang(); renderApp(); }); },
   'pin-change'() { changePin(); },
   'backup-export'() { if (DEMO) { toast(t('demoNoFile')); return; } openBackupExport(); },
   'bk-make'() { makeBackup(sheetById('backup')); },
@@ -2939,7 +3189,13 @@ const INPUT = {
   'cat-name'(el) { const rec = sheetById('cat-edit'); if (rec) rec.E.name = el.value; },
 };
 const CHANGE = {
-  'month-pick'(el) { if (/^\d{4}-\d{2}$/.test(el.value)) { S.month = el.value; S.statsYear = +el.value.slice(0, 4); renderView(); } },
+  'month-pick'(el) {
+    if (!/^\d{4}-\d{2}$/.test(el.value) || el.value === S.month) return;
+    const d = el.value > S.month ? 1 : -1;
+    S.month = el.value; S.statsYear = +el.value.slice(0, 4);
+    renderView();
+    if (S.tab === 'home') slideIn($('#home-body'), d);
+  },
   'f-date'(el) {
     if (!F) return;
     F.date = /^\d{4}-\d{2}-\d{2}$/.test(el.value) ? el.value : todayStr();
@@ -2949,6 +3205,7 @@ const CHANGE = {
     else updAmount();
   },
   'lock-toggle'(el) { if (el.checked) enableLock(); else disableLock(); },
+  'set-haptics'(el) { S.settings.haptics = el.checked; saveSettings(); },
   'lock-delay'(el) { S.settings.lock.delay = +el.value; saveSettings(); renderView(); },
   'imp-map'(el) {
     const P = S.imp;
@@ -3019,6 +3276,9 @@ function bindGlobal() {
     checkForUpdate();
   });
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
+  let rz = 0;
+  window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { syncSegs(); updateTopbar(true); }); });
+  document.fonts?.ready?.then(() => syncSegs()).catch(() => {});
   window.addEventListener('online', () => { if (!S.locked) syncRates(); checkForUpdate(); });
 }
 function registerSW() {
