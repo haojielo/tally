@@ -500,6 +500,7 @@ button.srow:active { background: color-mix(in srgb, var(--ink) 5%, transparent);
 :lang(en) .cat > span:last-child { font-size: 11px; letter-spacing: -.01em; }
 .f-meta { display: flex; gap: 8px; padding: 10px 14px 4px; flex: none; border-top: 1px solid var(--rule); }
 .date-chip input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
+.paste-chip { padding: 0 11px; color: var(--ink-2); }
 .f-note { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border: 0; border-radius: 12px; background: var(--sunk); font-size: 16px; outline: none; }
 .entry .sheet-foot { border-top: 0; padding: 8px 10px 6px; }
 .kp { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
@@ -577,6 +578,8 @@ button.srow:active { background: color-mix(in srgb, var(--ink) 5%, transparent);
 .howto[open] summary::after { content: "−"; }
 .howto ol { margin-top: 10px; padding-left: 20px; list-style: decimal; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
 .howto li + li { margin-top: 6px; }
+.howto + .howto { margin-top: 10px; }
+.howto-note { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
 .imp-sum { display: flex; flex-direction: column; gap: 2px; margin: 2px 2px 8px; }
 .imp-sum b { font-size: 21px; font-weight: 650; }
 .imp-sum span { font-size: 13.5px; color: var(--ink-3); }

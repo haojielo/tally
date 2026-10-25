@@ -2,7 +2,7 @@
  * Every record lives only in this browser's IndexedDB on this device.
  * The only network requests are exchange-rate lookups, which carry nothing but currency codes. */
 
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
 const BOOT_AT = Date.now();
 const DEMO = document.documentElement.dataset.demo === '1';
 const BASE = 'SEK';
@@ -101,7 +101,7 @@ const STR = {
     restored: '已恢复 {n} 笔记录', wrongBackupPw: '密码不对，或者文件已损坏', notBackup: '这不是 Tally 的备份文件',
     csvWarnTitle: '导出未加密的表格？', csvWarnMsg: 'CSV 文件没有加密，任何拿到文件的人都能看到全部账目。', csvOk: '导出', csvDone: '已导出 CSV',
     eraseTitle: '清除所有数据？', eraseMsg: '所有记录、分类和预算都会被删除，无法恢复。建议先导出备份。', eraseOk: '全部清除', erased: '已清除所有数据',
-    impPrivacy: '文件只在这台手机上读取和识别，不会上传到任何地方。', impFile: '选择文件', impFileSub: 'CSV、Excel 或 PDF 对账单', impPaste: '粘贴文本', impPasteSub: '从网银复制交易列表后粘贴',
+    impPrivacy: '文件只在这台手机上读取和识别，不会上传到任何地方。', impFile: '选择文件', impFileSub: 'CSV、Excel、PDF 对账单，或快捷指令记下的付款文件', impPaste: '粘贴', impPasteSub: '银行短信、Apple Pay 记录，或网银里复制的交易列表',
     impPastePh: '把网银里的交易记录复制后粘贴到这里，每笔需要包含日期和金额', impRead: '识别', impReading: '正在识别…', impPasteEmpty: '先粘贴交易文本',
     icaHowTitle: '怎样从 ICA Banken 导出账单',
     icaHow1: '在电脑浏览器登录 ICA Banken 网银（手机 App 里没有导出功能）。',
@@ -116,10 +116,20 @@ const STR = {
     diagCopy: '复制格式信息', diagCopied: '格式信息已复制', diagSelect: '已选中格式信息，请手动复制', diagShow: '查看内容', diagWrong: '识别得不对？复制格式信息',
     impFound: '{n} 笔交易', impRange: '{a} 至 {b}', impDup: '{n} 笔之前已导入过，已自动跳过。', impUnchecked: '转账、未入账和可能已手动记过的 {n} 笔默认不导入，需要时可以勾选。',
     impAllPositive: '所有金额都是正数。如果这是信用卡账单，点“正负号互换”。', impFlip: '正负号互换', impAll: '全选', impNone: '全不选', impCur: '账单币种',
-    impCurAsk: '没能识别出这份账单的货币', impCurAskSub: '请选择账单里金额的币种：', impCurAuto: '已识别为{n}（{c}），不对的话点下面的币种修改。', impCurRows: '每笔交易按表格里写的币种导入。', impPickCur: '先选择货币', impMixed: '多币种',
+    impCurAsk: '没能识别出这份账单的货币', impCurAskSub: '请选择账单里金额的币种：', impCurAuto: '已识别为{n}（{c}），不对的话点下面的币种修改。', impCurRows: '每笔交易按各自写明的币种导入。', impPickCur: '先选择货币', impMixed: '多币种',
     impMap: '列对应', impMapSum: '日期 {d}，说明 {t}，金额 {a}', impColDate: '日期列', impColText: '说明列', impColAmt: '金额列', impColBal: '余额列（可选）', impColNone: '无',
     impGo: '导入 {n} 笔', impDone: '已导入 {n} 笔', impNoneSel: '请至少选择一笔', tagTransfer: '转账', tagPending: '未入账', tagMaybe: '可能已记过',
-    srcText: '粘贴的文本', srcCSV: 'CSV 表格', srcExcel: 'Excel 表格', srcPDF: 'PDF 对账单',
+    srcText: '粘贴的文本', srcCSV: 'CSV 表格', srcExcel: 'Excel 表格', srcPDF: 'PDF 对账单', srcPay: '付款记录',
+    pasteChip: '粘贴', pastePay: '粘贴银行短信或 Apple Pay 记录', pasteNone: '剪贴板里没有找到付款信息', pasteDenied: '没能读取剪贴板',
+    pasteDup: '这笔已经记过了', pasteMaybe: '可能已经记过：{n}，请核对一下', payDefault: '刷卡消费', cardEnd: '尾号{c}',
+    impPasteNone: '剪贴板里没有识别到交易，可以直接粘贴到下面',
+    autoHowTitle: '自动记下 Apple Pay 和银行短信',
+    autoHow1: '打开“快捷指令”App → 自动化 → 新建自动化 → 选“钱包”（有的版本叫“交易”），勾选要记录的卡，选“立即运行”。',
+    autoHow2: '添加“文本”操作，内容写「#tally|当前日期|金额|商户」。“当前日期”从变量里选，“金额”和“商户”点“快捷指令输入”后选对应的项。',
+    autoHow3: '再添加“拷贝至剪贴板”和“追加到文本文件”（文件名比如 Tally付款.txt），两项都使用上一步的文本。',
+    autoHow4: '银行短信同理：新建“信息”自动化，“信息包含”填“消费”（或你的银行常用的词），选“立即运行”，文本写「#tally|当前日期|快捷指令输入」，后面两步一样。',
+    autoHow5: '付完款打开 Tally，点“+”再点“粘贴”就能记下这一笔。隔几天也可以在这里“选择文件”导入 Tally付款.txt，记过的会自动跳过。',
+    autoHowNote: 'Tally 是网页 App，苹果不允许它直接读取短信和钱包，所以由快捷指令把内容转交过来，全程只在你的手机上。',
     installTitle: '添加到主屏幕', installText: '在 Safari 中点“分享”，选“添加到主屏幕”。以后请从主屏幕图标打开，那里的数据和 Safari 里是分开保存的。',
     nagTitle: '该备份了', nagText: '已经 {n} 天没有备份。删除主屏幕图标或换手机时，没有备份的数据会一起消失。', nagNever: '还没有备份过。删除主屏幕图标或换手机时，没有备份的数据会一起消失。', backupNow: '立即备份', later: '稍后',
     volatile: '当前浏览器无法长期保存数据（可能处于无痕模式），关闭后记录会丢失。',
@@ -180,7 +190,7 @@ const STR = {
     restored: 'Restored {n} entries', wrongBackupPw: 'Wrong password, or the file is damaged', notBackup: 'This isn’t a Tally backup file',
     csvWarnTitle: 'Export an unencrypted table?', csvWarnMsg: 'CSV files aren’t encrypted. Anyone with the file can read every entry.', csvOk: 'Export', csvDone: 'CSV exported',
     eraseTitle: 'Erase all data?', eraseMsg: 'Every entry, category and budget will be deleted for good. Export a backup first.', eraseOk: 'Erase everything', erased: 'All data erased',
-    impPrivacy: 'Files are read on this phone only and are never uploaded.', impFile: 'Choose file', impFileSub: 'CSV, Excel or PDF statement', impPaste: 'Paste text', impPasteSub: 'Copy the list from your online bank',
+    impPrivacy: 'Files are read on this phone only and are never uploaded.', impFile: 'Choose file', impFileSub: 'CSV, Excel or PDF statement, or the payments file from Shortcuts', impPaste: 'Paste', impPasteSub: 'Bank texts, Apple Pay records, or a list copied from your online bank',
     impPastePh: 'Paste transactions copied from your online bank. Each needs a date and an amount', impRead: 'Read transactions', impReading: 'Reading…', impPasteEmpty: 'Paste some transactions first',
     icaHowTitle: 'Exporting from ICA Banken',
     icaHow1: 'Log in to ICA Banken’s internet bank in a computer browser (the app has no export).',
@@ -195,10 +205,20 @@ const STR = {
     diagCopy: 'Copy format info', diagCopied: 'Format info copied', diagSelect: 'Format info selected. Copy it manually', diagShow: 'Show contents', diagWrong: 'Something wrong? Copy format info',
     impFound: '{n} transactions', impRange: '{a} to {b}', impDup: '{n} were imported before and are skipped.', impUnchecked: '{n} transfers, pending or possibly already recorded entries are unchecked. Tick any you want.',
     impAllPositive: 'Every amount is positive. If this is a credit card statement, tap “Flip signs”.', impFlip: 'Flip signs', impAll: 'Select all', impNone: 'Select none', impCur: 'Statement currency',
-    impCurAsk: 'Couldn’t tell which currency this statement uses', impCurAskSub: 'Choose the currency of its amounts:', impCurAuto: 'Detected {n} ({c}). If that’s wrong, tap the currency below.', impCurRows: 'Each transaction uses the currency written in its row.', impPickCur: 'Choose a currency first', impMixed: 'Mixed',
+    impCurAsk: 'Couldn’t tell which currency this statement uses', impCurAskSub: 'Choose the currency of its amounts:', impCurAuto: 'Detected {n} ({c}). If that’s wrong, tap the currency below.', impCurRows: 'Each transaction uses the currency stated with it.', impPickCur: 'Choose a currency first', impMixed: 'Mixed',
     impMap: 'Columns', impMapSum: 'Date {d}, description {t}, amount {a}', impColDate: 'Date', impColText: 'Description', impColAmt: 'Amount', impColBal: 'Balance (optional)', impColNone: 'None',
     impGo: 'Import {n}', impDone: 'Imported {n}', impNoneSel: 'Select at least one', tagTransfer: 'Transfer', tagPending: 'Pending', tagMaybe: 'Maybe recorded',
-    srcText: 'Pasted text', srcCSV: 'CSV table', srcExcel: 'Excel table', srcPDF: 'PDF statement',
+    srcText: 'Pasted text', srcCSV: 'CSV table', srcExcel: 'Excel table', srcPDF: 'PDF statement', srcPay: 'Payments',
+    pasteChip: 'Paste', pastePay: 'Paste a bank text or Apple Pay record', pasteNone: 'No payment found on the clipboard', pasteDenied: 'Couldn’t read the clipboard',
+    pasteDup: 'This one is already recorded', pasteMaybe: 'This may already be recorded: {n}. Have a look', payDefault: 'Card payment', cardEnd: 'card ··{c}',
+    impPasteNone: 'Nothing recognisable on the clipboard. Paste it below instead',
+    autoHowTitle: 'Record Apple Pay and bank texts automatically',
+    autoHow1: 'In the Shortcuts app, open Automation, create a new automation, choose Wallet (or Transaction), pick your cards and choose Run Immediately.',
+    autoHow2: 'Add a Text action with “#tally|Current Date|Amount|Merchant”. Pick Current Date from the variables, and Amount and Merchant from Shortcut Input.',
+    autoHow3: 'Add Copy to Clipboard and Append to Text File (for example Tally payments.txt), both using that text.',
+    autoHow4: 'For bank texts, create a Message automation with “Message Contains” set to a word your bank uses (such as 消费), choose Run Immediately, and use the text “#tally|Current Date|Shortcut Input” with the same two steps.',
+    autoHow5: 'After paying, open Tally, tap + and then Paste to record it. Every few days you can also import Tally payments.txt here with Choose file; entries already recorded are skipped.',
+    autoHowNote: 'Tally is a web app, so Apple doesn’t let it read Messages or Wallet. Shortcuts passes the details along, and everything stays on your phone.',
     installTitle: 'Add to Home Screen', installText: 'In Safari, tap Share, then “Add to Home Screen”. Always open Tally from that icon: its data is kept apart from Safari’s.',
     nagTitle: 'Time for a backup', nagText: 'No backup for {n} days. If the Home Screen icon is deleted or you change phones, unsaved data goes with it.', nagNever: 'You haven’t backed up yet. If the Home Screen icon is deleted or you change phones, unsaved data goes with it.', backupNow: 'Back up now', later: 'Later',
     volatile: 'This browser can’t keep data (it may be in private mode). Entries will be lost when it closes.',
@@ -328,17 +348,17 @@ const OTHER = { expense: 'e_other', income: 'i_other' };
 
 const KEYWORDS = {
   expense: [
-    ['groceries', 'ica,coop,willys,hemköp,hemkop,lidl,city gross,citygross,netto,tempo,matöppet,matoppet,mathem,mat.se,livsmedel,dagligvaror,asia market,asian market,orientlivs,supermarket,超市'],
-    ['food', 'restaurang,restaurant,café,cafe,kafé,kafe,espresso house,wayne,starbucks,pressbyrån,pressbyran,7-eleven,7 eleven,mcdonalds,mcdonald,max burgers,burger king,subway,pizza,pizzeria,sushi,kebab,foodora,wolt,uber eats,ubereats,bistro,pub,kårrestaurang,karrestaurang,lunch,餐厅,外卖'],
-    ['transport', 'västtrafik,vasttrafik,sj,sj.se,skånetrafiken,sl,taxi,uber,bolt.eu,voi,tier,lime,circle k,preem,okq8,st1,ingo,parkering,easypark,flixbus,vy,mtrx,öresundståg,styr & ställ,bensin,drivmedel,transport,resor,滴滴,地铁'],
+    ['groceries', '盒马,永辉,ica,coop,willys,hemköp,hemkop,lidl,city gross,citygross,netto,tempo,matöppet,matoppet,mathem,mat.se,livsmedel,dagligvaror,asia market,asian market,orientlivs,supermarket,超市'],
+    ['food', 'restaurang,restaurant,café,cafe,kafé,kafe,espresso house,wayne,starbucks,pressbyrån,pressbyran,7-eleven,7 eleven,mcdonalds,mcdonald,max burgers,burger king,subway,pizza,pizzeria,sushi,kebab,foodora,wolt,uber eats,ubereats,bistro,pub,kårrestaurang,karrestaurang,lunch,餐厅,外卖,美团,饿了么,星巴克,瑞幸,肯德基,麦当劳'],
+    ['transport', 'västtrafik,vasttrafik,sj,sj.se,skånetrafiken,sl,taxi,uber,bolt.eu,voi,tier,lime,circle k,preem,okq8,st1,ingo,parkering,easypark,flixbus,vy,mtrx,öresundståg,styr & ställ,bensin,drivmedel,transport,resor,滴滴,地铁,公交,高铁,12306'],
     ['housing', 'hyra,sgs,studentbostäder,studentbostader,boplats,bostad,hsb,riksbyggen,wallenstam,heimstaden,akelius,poseidon,bostadsbolag,hemförsäkring,hemforsakring,boende,房租'],
     ['utilities', 'telia,tele2,telenor,tre,hallon,comviq,vimla,fello,göteborg energi,goteborg energi,vattenfall,tibber,fortum,ellevio,bredband,bahnhof,com hem,elavtal,话费,电费'],
     ['subs', 'spotify,netflix,hbo,disney,viaplay,youtube,apple.com,itunes,icloud,google one,chatgpt,openai,anthropic,claude.ai,microsoft,adobe,patreon,storytel,nextory,audible,dropbox,notion,github'],
     ['health', 'apotek,apoteket,kronans,hjärtat,hjartat,vårdcentral,vardcentral,tandläkare,tandlakare,folktandvården,folktandvarden,1177,sjukhus,optiker,synsam,specsavers,sats,friskis,nordic wellness,actic,gym,hälsa,halsa,医院,药'],
     ['study', 'chalmers,studentkår,studentkar,cremona,adlibris,bokus,akademibokhandel,coursera,udemy,kurslitteratur,utbildning,学费'],
-    ['shopping', 'h&m,hm.com,zara,clas ohlson,ikea,jula,biltema,elgiganten,mediamarkt,media markt,netonnet,webhallen,inet,komplett,amazon,lindex,kappahl,åhléns,ahlens,rusta,normal,dollarstore,temu,shein,zalando,cdon,xxl,stadium,intersport,kicks,lyko,granit,flying tiger,uniqlo,arket,lagerhaus,kläder,shopping,淘宝,京东,拼多多,天猫'],
+    ['shopping', '淘宝,天猫,京东,拼多多,闲鱼,h&m,hm.com,zara,clas ohlson,ikea,jula,biltema,elgiganten,mediamarkt,media markt,netonnet,webhallen,inet,komplett,amazon,lindex,kappahl,åhléns,ahlens,rusta,normal,dollarstore,temu,shein,zalando,cdon,xxl,stadium,intersport,kicks,lyko,granit,flying tiger,uniqlo,arket,lagerhaus,kläder,shopping,淘宝,京东,拼多多,天猫'],
     ['fun', 'filmstaden,sf bio,biograf,steam,playstation,nintendo,xbox,bowling,liseberg,konsert,ticketmaster,tickster,systembolaget,museum,universeum,nöje,noje'],
-    ['travel', 'sas,norwegian,ryanair,wizz,finnair,klm,lufthansa,air china,flygbussarna,hotel,hotell,airbnb,booking.com,expedia,ving,apollo,tui,trip.com,ctrip,hostel,scandic,携程,机票,酒店'],
+    ['travel', '飞猪,sas,norwegian,ryanair,wizz,finnair,klm,lufthansa,air china,flygbussarna,hotel,hotell,airbnb,booking.com,expedia,ving,apollo,tui,trip.com,ctrip,hostel,scandic,携程,机票,酒店'],
     ['gifts', 'interflora,blomster,florist,present,gåva,礼物'],
   ],
   income: [
@@ -353,7 +373,7 @@ const CJK = /[\u3400-\u9fff]/;
 const kwRegex = list => new RegExp(list.split(',').map(w => w.trim()).filter(Boolean)
   .map(w => (CJK.test(w) ? escRe(w) : `(?<![\\p{L}\\p{N}])${escRe(w)}(?![\\p{L}\\p{N}])`)).join('|'), 'iu');
 const KW_RE = Object.fromEntries(Object.entries(KEYWORDS).map(([type, rows]) => [type, rows.map(([key, list]) => [key, kwRegex(list)])]));
-const TRANSFER_RE = /(?<![\p{L}])(över|over)föring|overforing|internöverföring|egen överf|sparkonto|own account|transfer (to|from)/iu;
+const TRANSFER_RE = /(?<![\p{L}])(över|over)föring|overforing|internöverföring|egen överf|sparkonto|own account|transfer (to|from)|转账|汇款/iu;
 const PENDING_RE = /reserv|preliminär|prelim|pending|väntande|ej bokförd/i;
 const SUMMARY_LINE_RE = /^(ingående|utgående|saldo|summa|totalt|total|opening|closing|balance|期初|期末|余额|合计)/i;
 
@@ -1219,9 +1239,18 @@ async function restoreTx(tx) {
 
 // Moving between months slides the content the way the arrows point.
 function slideIn(el, dir) { anim(el, [{ opacity: 0, transform: `translateX(${dir * 22}px)` }, { opacity: 1, transform: 'none' }], { duration: 360, easing: EASE }); }
-// Theme, style and language changes cross-fade where the browser can.
+// Theme and language changes cross-fade where the browser can. The page doesn't take taps while a
+// cross-fade runs, so touching the screen finishes it at once: an animation never makes anyone wait.
+let fading = null;
 function withTransition(fn) {
-  if (document.startViewTransition && motionOK()) { try { document.startViewTransition(fn); return; } catch { /* fall through */ } }
+  if (document.startViewTransition && motionOK()) {
+    try {
+      const vt = document.startViewTransition(fn);
+      fading = vt;
+      vt.finished.catch(() => {}).then(() => { if (fading === vt) fading = null; });
+      return;
+    } catch { /* fall through */ }
+  }
   fn();
 }
 
@@ -1524,6 +1553,7 @@ function openEntry(tx) {
       <div class="f-cats" id="f-cats">${catGridHTML()}</div>
       <div class="f-meta">
         <label class="chip date-chip">${ic('calendar')}<span id="f-date-l">${fmtDayShort(F.date)}</span><input type="date" value="${F.date}" data-change="f-date" aria-label="${t('date')}"></label>
+        ${tx ? '' : html`<button class="chip paste-chip" data-act="f-paste" aria-label="${t('pastePay')}">${ic('paste')}<span>${t('pasteChip')}</span></button>`}
         <input class="f-note" id="f-note" type="text" placeholder="${t('notePh')}" value="${F.note}" data-input="f-note" maxlength="80" enterkeyhint="done" autocomplete="off">
       </div>`,
     foot: html`<div class="kp" id="kp">${keypadHTML()}</div>`,
@@ -1569,6 +1599,29 @@ const updAmount = () => {
   $$('#kp [data-k="+"], #kp [data-k="-"]').forEach(b => b.classList.toggle('on', b.dataset.k === last));
   fitAmount();
 };
+function fillFromPayment(r, ext) {
+  const sh = sheetById('entry');
+  if (!sh || !F) return;
+  const type = r.amount < 0 ? 'expense' : 'income', cur = r.cur || dispCur();
+  const guess = guessCat(r.text, r.kind, type);
+  const keep = type === F.type && guess === OTHER[type] && S.cats.some(c => c.id === F.cat);
+  const abs = Math.abs(r.amount);
+  Object.assign(F, { type, cur, expr: Number.isInteger(abs) ? String(abs) : abs.toFixed(dpOf(cur)), date: r.date, note: r.text, ext, via: r.via, card: r.card, rateManual: false, cat: keep ? F.cat : guess });
+  sh.el.querySelectorAll('[data-act="f-type"]').forEach(b => { const on = b.dataset.v === type; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  syncSegs(sh.el);
+  $('#f-cats').innerHTML = catGridHTML().s;
+  $('#kp').innerHTML = keypadHTML().s;
+  const di = sh.el.querySelector('.date-chip input');
+  if (di) di.value = F.date;
+  $('#f-date-l').textContent = fmtDayShort(F.date);
+  $('#f-note').value = F.note;
+  loadRate();
+  updAmount();
+  anim($('#f-amount'), [{ opacity: 0.15, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: EASE });
+  const me = { type, cur, amt: Math.abs(r.amount), date: r.date, text: r.text, via: r.via, card: r.card, generic: r.generic };
+  const like = S.tx.find(x => samePurchase(me, asPurchase(x)));
+  if (like) toast(t('pasteMaybe', { n: like.note || catName(catById(like.cat)) }));
+}
 // Like the Calculator display, a long amount gets smaller rather than being cut off.
 function fitAmount() {
   const el = $('#f-amount .amt-big');
@@ -1616,6 +1669,7 @@ async function saveEntry() {
   const amount = roundDp(amt, dpOf(F.cur));
   const tx = F.orig ? { ...F.orig } : { id: uid(), ts: now, src: 'manual' };
   Object.assign(tx, { type: F.type, amount, currency: F.cur, rate, base: round2(amount * rate), cat: F.cat, date: F.date, note: F.note.trim(), mt: now });
+  if (F.ext && !F.orig) { tx.ext = F.ext; if (F.via) tx.via = F.via; if (F.card) tx.card = F.card; } // a pasted payment: later copies of it are spotted
   await db.put(tx);
   const i = S.tx.findIndex(x => x.id === tx.id);
   if (i >= 0) S.tx[i] = tx; else S.tx.push(tx);
@@ -2072,7 +2126,8 @@ function sanitizeBackup(o) {
   const tx = o.tx.filter(x => x && typeof x.id === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (x.type === 'expense' || x.type === 'income') && Number.isFinite(+x.amount) && Number.isFinite(+x.base))
     .map(x => ({
       id: x.id.slice(0, 64), type: x.type, amount: Math.abs(+x.amount), currency: /^[A-Z]{3}$/.test(x.currency) ? x.currency : BASE, rate: +x.rate > 0 ? +x.rate : 1, base: Math.abs(+x.base),
-      cat: ids.has(x.cat) ? x.cat : OTHER[x.type], date: x.date, note: str(x.note, 120), src: x.src === 'import' ? 'import' : 'manual', ...(typeof x.ext === 'string' ? { ext: x.ext.slice(0, 40) } : {}), ts: +x.ts || Date.now(), mt: +x.mt || Date.now(),
+      cat: ids.has(x.cat) ? x.cat : OTHER[x.type], date: x.date, note: str(x.note, 120), src: x.src === 'import' ? 'import' : 'manual', ...(typeof x.ext === 'string' ? { ext: x.ext.slice(0, 40) } : {}),
+      ...(x.via === 'sms' || x.via === 'applepay' ? { via: x.via } : {}), ...(/^\d{4}$/.test(x.card) ? { card: x.card } : {}), ts: +x.ts || Date.now(), mt: +x.mt || Date.now(),
     }));
   const budget = { total: +o.budget?.total > 0 ? +o.budget.total : null, cats: {}, cur: /^[A-Z]{3}$/.test(o.budget?.cur) ? o.budget.cur : BASE };
   for (const [k, v] of Object.entries(o.budget?.cats || {})) if (ids.has(k) && +v > 0) budget.cats[k] = +v;
@@ -2406,6 +2461,10 @@ function resolveBalanceColumn(recs) {
   return recs;
 }
 function parseText(text, src) {
+  if (looksLikePayments(text)) {
+    const res = fromPayments(text);
+    if (res.recs.length) { res.diag = diagForRows(res.source, res, text.split(/\r?\n/)); res.curGuess = detectCurrency(res, text); return res; }
+  }
   const delim = detectDelim(text);
   let res = null;
   if (delim === '\t' || delim === ';') {
@@ -2474,6 +2533,141 @@ function detectCurrency(res, docText = '') {
   if (seen.size === 1) { const [[c, k]] = [...seen]; if (k >= 2) return { cur: c, how: 'mentions' }; }
   return { cur: null, how: null };
 }
+
+/* Payment notices: a bank's text message about a card payment, or a line a Shortcuts automation writes for
+   each Apple Pay payment ("#tally|date|amount|merchant|card"). A web app can't read Messages or Wallet, so the
+   Shortcut copies the line to the clipboard (and appends it to a file); Tally reads it when it's pasted or
+   the file is imported, and the import's usual duplicate check keeps repeats out. */
+const PAY_TAG_RE = /[#＃]\s*tally\b/i;
+const PAY_CUE_RE = /(您的|您尾号|尾号|借记卡|信用卡|储蓄卡|银行卡|账户|账号|卡号|【[^】]{1,14}】|your (card|account)|card ending|ending (in|with))/i;
+const PAY_WORD_RE = /(消费|支出|支付|扣款|扣费|付款|POS|刷卡|取现|取款|转出|转入|转账|汇款|入账|收入|存入|退款|退货|冲正|撤销|工资|代发|debited|credited|spent|purchase|paid|charged|refund|withdrawal)/i;
+const PAY_OTP_RE = /(验证码|校验码|动态码|动态密码|verification code|one[- ]time (pass)?code|\bOTP\b)/i;
+const PAY_CUR = '人民币|RMB|CNY|SEK|USD|EUR|GBP|HKD|JPY|NOK|DKK|CHF|瑞典克朗|克朗|美元|欧元|港币|港元|日元|英镑';
+const PAY_AMT_RE = new RegExp(`(${PAY_CUR}|[¥￥$€£]|kr\\.?)?\\s*([-−+]?(?:\\d{1,3}(?:,\\d{3})+|\\d{1,3}(?:[ \\u00a0\\u202f]\\d{3})+|\\d+)(?:[.,]\\d{1,2})?)\\s*(元|${PAY_CUR}|kronor|kr)?`, 'giu');
+const PAY_CURS = [[/人民币|RMB|CNY|元|[¥￥]/i, 'CNY'], [/瑞典克朗|克朗|SEK|kronor|kr/i, 'SEK'], [/美元|USD|\$/i, 'USD'], [/欧元|EUR|€/i, 'EUR'], [/港币|港元|HKD/i, 'HKD'],
+  [/日元|JPY/i, 'JPY'], [/英镑|GBP|£/i, 'GBP'], [/NOK/i, 'NOK'], [/DKK/i, 'DKK'], [/CHF/i, 'CHF']];
+const payCur = s => (PAY_CURS.find(([re]) => re.test(s)) || [])[1] || null;
+// the amount of the payment: the one after 金额/消费/charged…, never a balance, a card number, a date or a time
+function payAmount(text) {
+  const found = [];
+  for (const m of text.matchAll(PAY_AMT_RE)) {
+    const [all, pre, num, post] = m;
+    const i = m.index, before = text.slice(Math.max(0, i - 10), i), after = text.slice(i + all.length, i + all.length + 2);
+    const cur = pre || post, hasDec = /[.,]\d{1,2}$/.test(num);
+    if (!cur && /(尾号|卡号?|账户|账号|于|ending(?: in| with)?|\*)\s*$/i.test(before)) continue;
+    if (!cur && /^\s*(月|日|号|时|分|点|[:：/]|-\d)/.test(after)) continue;
+    const ctx = /(余额|可用|结余|剩余|额度|balance|saldo)[^\d]{0,6}$/i.test(before) ? 'bal'
+      : /(冻结|预授权|授权|hold)[^\d]{0,6}$/i.test(before) ? 'hold'
+      : /(金额|消费|支出|支付|扣款|扣费|交易|付款|入账|收入|存入|转入|转出|退款|取现|取款|charged|spent|debited|credited|purchase|amount|of)[^\d]{0,8}$/i.test(before) ? 'main' : '';
+    if (!cur && !hasDec && ctx !== 'main') continue;
+    const value = parseAmount(num);
+    if (!Number.isFinite(value) || value === 0) continue;
+    found.push({ value, cur: cur ? payCur(cur) : null, ctx });
+  }
+  return found.find(x => x.ctx === 'main') || found.find(x => !x.ctx) || found.find(x => x.ctx === 'hold') || null;
+}
+// "2026-10-25T14:03…", "2026年10月25日 下午2:03", "25 okt. 2026", "Oct 25, 2026 at 2:03 PM"
+function looseDate(s) {
+  s = String(s ?? '').trim();
+  if (!/\d/.test(s) || s.length > 44) return null;
+  let m;
+  if ((m = s.match(/^(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/))) return mkDate(m[1], m[2], m[3]);
+  if ((m = s.match(/^(\d{1,2})\s*([a-zåäö]{3,9})\.?,?\s+(\d{4})/i)) && SV_MONTHS[m[2].slice(0, 3).toLowerCase()]) return mkDate(m[3], SV_MONTHS[m[2].slice(0, 3).toLowerCase()], m[1]);
+  if ((m = s.match(/^([a-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})/i)) && SV_MONTHS[m[1].slice(0, 3).toLowerCase()]) return mkDate(m[3], SV_MONTHS[m[1].slice(0, 3).toLowerCase()], m[2]);
+  return null;
+}
+// the day written inside a text message: 于1022, 10月22日, 2026-10-22, 22 Oct
+function smsDate(text) {
+  const y = new Date().getFullYear();
+  let m;
+  if ((m = text.match(/(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/))) return mkDate(m[1], m[2], m[3]);
+  if ((m = text.match(/(\d{1,2})月(\d{1,2})日/))) return yearless(y, m[1], m[2]);
+  if ((m = text.match(/于\s*(\d{2})(\d{2})(?!\d)/))) return yearless(y, m[1], m[2]);
+  if ((m = text.match(/\b(\d{1,2})\s+(jan|feb|mar|apr|may|maj|jun|jul|aug|sep|oct|okt|nov|dec)[a-z]*\b/i))) return yearless(y, SV_MONTHS[m[2].toLowerCase()], m[1]);
+  if ((m = text.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})\b/i))) return yearless(y, SV_MONTHS[m[1].toLowerCase()], m[2]);
+  return null;
+}
+function paySms(text, fallbackDate) {
+  text = String(text).replace(/\s+/g, ' ').trim();
+  if (PAY_OTP_RE.test(text) && !/消费|支出|扣款/.test(text)) return null;
+  if (/(解冻|解除冻结|释放)/.test(text) && !/(消费|支出|扣款|付款)/.test(text)) return null; // a hold released: no money moved
+  const a = payAmount(text);
+  if (!a) return null;
+  const refund = /(退款|退货|冲正|撤销|返还|refund|reversal|reversed)/i.test(text);
+  const income = refund || (/(收入|存入|转入|汇入|工资|代发|奖学金|credited|received|deposit)/i.test(text) && !/(消费|支出|扣款|付款|POS|debited|spent|charged)/i.test(text));
+  const card = (text.match(/(?:尾号|卡号?|账户|账号)\s*[*＊xX]*\s*(\d{4})(?!\d)/) || text.match(/ending(?: in| with)?\s*[*xX]*\s*(\d{4})/i) || [])[1] || '';
+  const merchant = ((text.match(/在\s*([^，,。;；]{2,40}?)\s*(?:进行|发生)?\s*(?:POS|网上|快捷|境外|跨境)?\s*(?:消费|支付|刷卡|交易|购物|扣款)/)
+    || text.match(/商户[:：\s]*([^，,。;；]{2,40})/) || text.match(/\bat\s+([A-Za-z0-9][^,.;]{1,40}?)(?:\s+on\s|\s*[,.;]|$)/i) || [])[1] || '').trim();
+  const phrase = ((text.match(/(?:双信息)?\s*((?:POS|网上|快捷|ATM|境外|跨境)?\s*(?:消费|支付|支出|取款|取现|转账|退款|退货|扣款|代扣|工资收入|代发工资|工资|收入|存入|入账))/) || [])[1] || '').replace(/\s+/g, '');
+  const desc = merchant || `${phrase || t('payDefault')}${card ? ' · ' + t('cardEnd', { c: card }) : ''}`;
+  return {
+    date: smsDate(text) || fallbackDate || todayStr(), text: cleanText(desc), amount: round2(income ? Math.abs(a.value) : -Math.abs(a.value)), balance: null,
+    kind: [phrase, card && '卡' + card].filter(Boolean).join(' '), cur: a.cur, mark: null, pay: true, via: 'sms', card, generic: !merchant,
+    // a later "posted" notice for a purchase whose hold was already reported is most likely the same money
+    maybe: /(入账|清算|settled)/.test(text) && /(双信息|预授权|冻结)/.test(text),
+  };
+}
+function payFromTag(line) {
+  const fields = line.slice(line.search(PAY_TAG_RE)).replace(PAY_TAG_RE, '').split(/[|｜]/).map(f => f.trim()).filter(Boolean);
+  let date = null, amount = null, cur = null;
+  const rest = [];
+  for (const f of fields) {
+    if (!date) { const d = looseDate(f); if (d) { date = d; continue; } }
+    if (amount == null && /[.,]\d{1,2}\b|[¥￥$€£]|kr|元|\b[A-Z]{3}\b/i.test(f) && f.length < 26 && Number.isFinite(parseAmount(f))) { amount = Math.abs(parseAmount(f)); cur = payCur(f) || curInText(f); continue; }
+    rest.push(f);
+  }
+  // the Messages automation passes the whole text message along
+  const sms = rest.find(f => PAY_WORD_RE.test(f) && /\d/.test(f) && f.length > 10);
+  if (amount == null) return sms ? paySms(sms, date) : null;
+  const card = rest.find(f => /(\d{4}\s*$|卡|card|visa|master|maestro|amex|debit|credit|银联|unionpay)/i.test(f)) || '';
+  const merchant = rest.find(f => f !== card && !/^(apple ?pay|短信|sms|wallet|钱包)$/i.test(f)) || '';
+  return { date: date || todayStr(), text: cleanText(merchant || card || 'Apple Pay'), amount: -round2(amount), balance: null,
+    kind: [card, 'Apple Pay'].filter(Boolean).join(' '), cur, mark: null, pay: true, via: 'applepay', card: (card.match(/(\d{4})\s*$/) || [])[1] || '', generic: !merchant };
+}
+// one entry per tagged line or text message; a bank's 【name】 alone on a line joins the message after it
+function payMessages(text) {
+  const out = [];
+  let pre = '';
+  for (const raw of String(text ?? '').split(/\r?\n/)) {
+    const l = raw.trim();
+    if (!l) continue;
+    const last = out[out.length - 1];
+    if (PAY_TAG_RE.test(l)) out.push(pre + l);
+    else if (last && PAY_TAG_RE.test(last) && !payFromTag(last)) out[out.length - 1] = `${last} ${l}`;
+    else if (!/\d/.test(l)) { pre += l; continue; }
+    else out.push(pre + l);
+    pre = '';
+  }
+  return out;
+}
+function looksLikePayments(text) {
+  const msgs = payMessages(text);
+  if (!msgs.length || msgs.length > 500) return false;
+  if (msgs.some(m => PAY_TAG_RE.test(m))) return true;
+  const sms = msgs.filter(m => PAY_CUE_RE.test(m) && PAY_WORD_RE.test(m) && !PAY_OTP_RE.test(m) && payAmount(m));
+  return sms.length > 0 && sms.length >= msgs.length * 0.5;
+}
+function fromPayments(text, src = t('srcPay')) {
+  const recs = [];
+  for (const m of payMessages(text)) { const r = PAY_TAG_RE.test(m) ? payFromTag(m) : paySms(m, null); if (r) recs.push(r); }
+  return { source: src, recs, table: null, ctx: null };
+}
+// the duplicate key a pasted payment gets, the same one a later import of the same line computes
+const payExt = r => `${fnv(`${r.date}|${r.amount.toFixed(2)}|${normText(r.text)}|`)}.1`;
+// Could two records be one purchase? Same money and type; then the same day, or a day apart when they came
+// through different channels (Apple Pay keeps local time, a bank may stamp its own day). Different cards or
+// clearly different merchants rule it out; a text with no merchant fits anything.
+const payKey = s => normText(s).normalize('NFD').replace(/\p{M}/gu, '').replace(/[^\p{L}\p{N} ]/gu, ' ').replace(/\s+/g, ' ').trim();
+function samePurchase(a, b) {
+  if (a.type !== b.type || a.cur !== b.cur || Math.abs(a.amt - b.amt) > 0.011) return false;
+  const days = Math.abs(dayDiff(a.date, b.date));
+  if (days > 1 || (days === 1 && (!a.via || !b.via || a.via === b.via))) return false;
+  if (a.card && b.card && a.card !== b.card) return false;
+  if (a.generic || b.generic || !a.text || !b.text) return true;
+  const A = payKey(a.text), B = payKey(b.text);
+  return A === B || A.includes(B) || B.includes(A) || A.split(' ')[0] === B.split(' ')[0];
+}
+const asPurchase = x => ({ type: x.type, cur: x.currency, amt: x.amount, date: x.date, text: x.note, via: x.via, card: x.card, generic: !x.note });
 
 /* Excel and HTML tables */
 async function inflateRaw(u8) {
@@ -2758,7 +2952,8 @@ async function parseImportFile(file, password) {
   else if (buf[0] === 0xD0 && buf[1] === 0xCF) throw new AppError('impOldXls');
   else {
     const text = decodeText(buf);
-    if (/^\s*<(!doctype|html|table|\?xml)/i.test(text) || /<table[\s>]/i.test(text.slice(0, 4000))) {
+    if (looksLikePayments(text)) { const r = fromPayments(text); if (r.recs.length) { res = r; lines = text.split(/\r?\n/); } }
+    if (!res && (/^\s*<(!doctype|html|table|\?xml)/i.test(text) || /<table[\s>]/i.test(text.slice(0, 4000)))) {
       const rows = htmlTableRows(text);
       if (rows.length) { res = fromTable(rows, t('srcExcel')); lines = rows.map(r => r.join(' | ')); }
     }
@@ -2796,13 +2991,13 @@ function guessCat(text, kind, type) {
 function buildCands(P) {
   const keys = new Set(S.tx.map(x => x.ext).filter(Boolean));
   const occ = new Map();
-  const manual = S.tx.filter(x => x.src === 'manual');
+  const manual = S.tx.filter(x => x.src === 'manual' || x.via);
   // The same bank line can arrive from different sources (CSV, Excel, PDF, pasted text) that differ in
   // whether they carry a balance, so also match on date + amount + description, counting repeats.
   const sigOf = (cur, date, type, amt, text) => `${cur}|${date}|${type}|${amt.toFixed(2)}|${normText(text)}`;
   const have = new Map();
   for (const x of S.tx) if (x.src === 'import') { const k = sigOf(x.currency, x.date, x.type, x.amount, x.note); have.set(k, (have.get(k) || 0) + 1); }
-  const seen = new Map();
+  const seen = new Map(), paid = [];
   P.cands = P.recs.map(r => {
     const cur = (P.curRows && r.cur) || P.cur;
     const signed = P.flip ? -r.amount : r.amount;
@@ -2816,7 +3011,12 @@ function buildCands(P) {
     const dup = keys.has(ext) || (!!cur && m <= (have.get(sig) || 0));
     const transfer = TRANSFER_RE.test(`${r.text} ${r.kind}`);
     const pending = PENDING_RE.test(`${r.text} ${r.kind}`);
-    const maybe = !dup && !!cur && manual.some(x => x.type === type && Math.abs(dayDiff(x.date, r.date)) <= 2 && (x.currency === cur ? Math.abs(x.amount - amt) < 0.011 : cur === BASE && Math.abs(x.base - amt) < 0.011));
+    let maybe = !dup && !!cur && manual.some(x => x.type === type && Math.abs(dayDiff(x.date, r.date)) <= 2 && (x.currency === cur ? Math.abs(x.amount - amt) < 0.011 : cur === BASE && Math.abs(x.base - amt) < 0.011));
+    if (r.pay && !dup) {
+      const me = { type, cur, amt, date: r.date, text: r.text, via: r.via, card: r.card, generic: r.generic };
+      maybe = !!r.maybe || (!!cur && (S.tx.some(x => samePurchase(me, asPurchase(x))) || paid.some(p => samePurchase(me, p))));
+      paid.push(me);
+    }
     const prev = P.cands?.find(c => c.ext === ext);
     const on = prev?.touched ? prev.on : !transfer && !pending && !maybe;
     return { ...r, cur, amt, type, ext, dup, transfer, pending, maybe, cat: prev?.manual ? prev.cat : guessCat(r.text, r.kind, type), manual: !!prev?.manual, touched: !!prev?.touched, on: !dup && on };
@@ -2834,6 +3034,7 @@ function openImport() {
         <textarea id="imp-text" rows="7" placeholder="${t('impPastePh')}" spellcheck="false" autocomplete="off"></textarea>
         <button class="btn primary wide" data-act="imp-paste-go">${t('impRead')}</button>
       </div>
+      <details class="howto"><summary>${t('autoHowTitle')}</summary><ol><li>${t('autoHow1')}</li><li>${t('autoHow2')}</li><li>${t('autoHow3')}</li><li>${t('autoHow4')}</li><li>${t('autoHow5')}</li></ol><p class="howto-note">${t('autoHowNote')}</p></details>
       <details class="howto"><summary>${t('icaHowTitle')}</summary><ol><li>${t('icaHow1')}</li><li>${t('icaHow2')}</li><li>${t('icaHow3')}</li><li>${t('icaHow4')}</li></ol></details>
       <div id="imp-err" class="imp-err" hidden></div>`,
   });
@@ -2984,7 +3185,8 @@ async function confirmImport(P) {
   const txs = chosen.map((c, i) => {
     const rate = rateOf[c.cur](c.date);
     const amount = roundDp(c.amt, dpOf(c.cur));
-    return { id: uid(), type: c.type, amount, currency: c.cur, rate, base: round2(amount * rate), cat: c.cat, date: c.date, note: cleanText(c.text), src: 'import', ext: c.ext, ts: now + i, mt: now };
+    return { id: uid(), type: c.type, amount, currency: c.cur, rate, base: round2(amount * rate), cat: c.cat, date: c.date, note: cleanText(c.text), src: 'import', ext: c.ext,
+      ...(c.via ? { via: c.via } : {}), ...(c.card ? { card: c.card } : {}), ts: now + i, mt: now };
   });
   await db.putMany(txs);
   S.tx.push(...txs); sortTx();
@@ -3074,6 +3276,23 @@ const ACT = {
     if (!F) return;
     F.cat = el.dataset.id;
     $$('#f-cats .cat').forEach(b => { const on = b.dataset.id === F.cat; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  },
+  async 'f-paste'() {
+    if (!F || F.orig) return;
+    let text = '';
+    try { text = (await navigator.clipboard.readText()) || ''; } catch { toast(t('pasteDenied')); return; }
+    const res = looksLikePayments(text) ? fromPayments(text) : { recs: [] };
+    if (!F) return;
+    if (!res.recs.length) { shake('#f-amount .amt-big'); toast(t('pasteNone')); return; }
+    if (res.recs.length > 1) { // several payments waiting: review them together
+      closeSheet(sheetById('entry'));
+      res.diag = diagForRows(res.source, res, text.split(/\r?\n/)); res.curGuess = detectCurrency(res, text);
+      startPreview(res);
+      return;
+    }
+    const r = res.recs[0], ext = payExt(r);
+    if (S.tx.some(x => x.ext === ext)) { toast(t('pasteDup')); return; }
+    fillFromPayment(r, ext);
   },
   'f-cat-new'() {
     if (!F) return;
@@ -3196,7 +3415,17 @@ const ACT = {
     if (rec && pw) importFile(rec.file, pw);
   },
   'diag-copy'(el) { copyDiag(el); },
-  'imp-paste'() { const box = $('#imp-paste-box'); box.hidden = !box.hidden; if (!box.hidden) $('#imp-text').focus(); },
+  async 'imp-paste'() {
+    const box = $('#imp-paste-box');
+    if (box && !box.hidden) { box.hidden = true; return; }
+    let text = '';
+    try { text = (await navigator.clipboard?.readText?.()) || ''; } catch { /* not allowed: use the box */ }
+    if (text.trim()) {
+      try { const res = parseText(text, t('srcText')); if (res.recs.length) { startPreview(res); return; } } catch (e) { console.warn(e); }
+      toast(t('impPasteNone'));
+    }
+    if (box) { box.hidden = false; $('#imp-text')?.focus(); }
+  },
   'imp-paste-go'() {
     const txt = $('#imp-text')?.value || '';
     if (!txt.trim()) { toast(t('impPasteEmpty')); return; }
@@ -3310,6 +3539,7 @@ function bindGlobal() {
   // quickest tap is visible. The + button sinks in the same way.
   const KEYS_SEL = '.kp button, .pinpad button, .tab-add';
   document.addEventListener('pointerdown', e => { const b = e.target.closest?.(KEYS_SEL); if (b && !b.disabled) b.classList.add('hit'); }, { passive: true });
+  document.addEventListener('pointerdown', () => { if (fading) { try { fading.skipTransition(); } catch { /* already over */ } fading = null; } }, { capture: true, passive: true });
   const unhit = () => $$('.hit').forEach(b => b.classList.remove('hit'));
   document.addEventListener('pointerup', unhit, { passive: true });
   document.addEventListener('pointercancel', unhit, { passive: true });

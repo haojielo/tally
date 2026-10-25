@@ -1,6 +1,6 @@
 /* Tally service worker: keeps the app working offline.
    Only the app's own files are cached. Your records live in IndexedDB, never here. */
-const VERSION = 'tally-1.0.6';
+const VERSION = 'tally-1.0.7';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './apple-touch-icon.png', './icon-192.png', './icon-512.png',
   './icon-maskable-512.png', './stream-polyfill.js', './pdf.worker.shim.js', './pdf.min.js', './pdf.worker.min.js'];
 
