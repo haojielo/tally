@@ -2,7 +2,7 @@
  * Every record lives only in this browser's IndexedDB on this device.
  * The only network requests are exchange-rate lookups, which carry nothing but currency codes. */
 
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 const BOOT_AT = Date.now();
 const DEMO = document.documentElement.dataset.demo === '1';
 const BASE = 'SEK';
@@ -127,16 +127,12 @@ const STR = {
     demoNoFile: '预览版不能导出或恢复文件，装到主屏幕的正式版可以',
     updateReady: '新版本已就绪', reload: '重新载入', offline: '当前离线',
     updateBanner: '新版本已经下载好，重新载入后就能使用。',
-    palette: '配色', icon: '图标', pal_harbor: '港湾', pal_ledger: '账簿', pal_receipt: '小票', pal_piggy: '存钱罐', pal_coin: '金币',
-    iconHintApp: '主屏幕图标在添加时就固定了，换成新图标需要重新添加一次。', iconHintSafari: '选好后点 Safari 的“分享”→“添加到主屏幕”，就会用这个图标。',
-    iconSteps: '怎样换图标', iconStepsTitle: '更换主屏幕图标', iconStep1: '在这里的“设置”里导出加密备份。', iconStep2: '用 Safari 打开 {url}，在“设置”里选好图标。',
-    iconStep3: '点 Safari 的“分享”，选“添加到主屏幕”。', iconStep4: '打开新的 Tally 图标，用“从备份恢复”导入刚才的备份。', iconStep5: '确认记录都在以后，再删除旧图标。',
     storeWhere: '数据存放位置', storeApp: '主屏幕上的 Tally', storeSafari: 'Safari 网页', storeBrowser: '这个浏览器',
     storePersist: '已开启长期保存，系统不会自动清理', storeNoPersist: '未开启长期保存，手机空间不足时可能被清理', storeUnknown: '只保存在这台设备上',
     safariTitle: '这些记录存在 Safari 里', safariText: '主屏幕上的 Tally 看不到这里的记录，Safari 也可能清理很久没访问的网站数据。请导出加密备份，再到主屏幕的 Tally 里恢复。', exportBackup: '导出备份',
     nagNew: '上次备份以后又多了 {n} 笔记录。删除主屏幕图标或换手机时，没有备份的记录会一起消失。',
     monthSummary: '本月汇总', moreActions: '更多',
-    haptics: '触感反馈', hapticsSub: '保存、导入完成或输入有误时', backToTop: '回到顶部',
+    haptics: '触感反馈', hapticsSub: '点“+”、数字键、保存和删除时', undo: '撤销', backToTop: '回到顶部',
   },
   en: {
     appName: 'Tally', locale: 'en-US',
@@ -210,16 +206,12 @@ const STR = {
     demoNoFile: 'The preview can’t save or restore files. The installed app can',
     updateReady: 'A new version is ready', reload: 'Reload', offline: 'Offline',
     updateBanner: 'A new version is downloaded. Reload to start using it.',
-    palette: 'Style', icon: 'Icon', pal_harbor: 'Harbor', pal_ledger: 'Ledger', pal_receipt: 'Receipt', pal_piggy: 'Piggy bank', pal_coin: 'Coins',
-    iconHintApp: 'The Home Screen icon is fixed when you add the app. Using a new icon means adding Tally again.', iconHintSafari: 'Now tap Share → Add to Home Screen in Safari to use this icon.',
-    iconSteps: 'How to change the icon', iconStepsTitle: 'Change the Home Screen icon', iconStep1: 'Export an encrypted backup here in Settings.', iconStep2: 'Open {url} in Safari and pick the icon in Settings.',
-    iconStep3: 'Tap Share in Safari, then Add to Home Screen.', iconStep4: 'Open the new Tally icon and restore the backup with Restore from backup.', iconStep5: 'Once your entries are there, delete the old icon.',
     storeWhere: 'Where your data is', storeApp: 'Tally on your Home Screen', storeSafari: 'Safari web page', storeBrowser: 'This browser',
     storePersist: 'Kept long-term. The system won’t clear it on its own', storeNoPersist: 'Not kept long-term. It may be cleared when the phone runs low on space', storeUnknown: 'Stored only on this device',
     safariTitle: 'These entries are in Safari', safariText: 'Tally on your Home Screen can’t see entries saved here, and Safari may clear data for sites you haven’t visited in a while. Export an encrypted backup and restore it in the Home Screen app.', exportBackup: 'Export backup',
     nagNew: '{n} new entries since your last backup. If the Home Screen icon is deleted or you change phones, they go with it.',
     monthSummary: 'Month summary', moreActions: 'More',
-    haptics: 'Haptics', hapticsSub: 'When you save, finish an import, or need to fix something', backToTop: 'Back to top',
+    haptics: 'Haptics', hapticsSub: 'When you tap +, the keypad, Save or Delete', undo: 'Undo', backToTop: 'Back to top',
   },
 };
 let LANG = 'zh';
@@ -302,8 +294,6 @@ const ICONS = {
   paste: '<rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5v-1h6v1M9 10.5h6M9 14.5h4"/>',
   file: '<path d="M6.5 3h7.5l4.5 4.5V20a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M13.5 3v5h5"/>',
   key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l8.5-8.5M16 7l2.5 2.5M14 9l2 2"/>',
-  palette: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-1 1.4-2.1-.6-1.2.2-2.4 1.5-2.4H17a3.5 3.5 0 0 0 3.5-3.5c0-5-3.8-9-8.5-9z"/><circle cx="7.6" cy="11" r="1.2" fill="currentColor" stroke="none"/><circle cx="10.4" cy="7.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="7.8" r="1.2" fill="currentColor" stroke="none"/>',
-  appicon: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M9 9v6M12 9v6M15 9v6"/>',
 };
 const CAT_ICONS = ['utensils', 'cart', 'tram', 'home', 'bolt', 'bag', 'ticket', 'repeat', 'heart', 'cap', 'plane', 'gift', 'coffee', 'wine', 'shirt', 'car', 'bike', 'phone', 'wifi', 'music', 'gamepad', 'book', 'paw', 'dumbbell', 'pill', 'scissors', 'wrench', 'shield', 'star', 'briefcase', 'family', 'medal', 'laptop', 'trend', 'envelope', 'undo', 'dots'];
 const ic = (name, cls = '') => raw(`<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.dots}</svg>`);
@@ -370,7 +360,7 @@ const SUMMARY_LINE_RE = /^(ingående|utgående|saldo|summa|totalt|total|opening|
 /* ───────────────────────── state ───────────────────────── */
 
 const DEFAULT_SETTINGS = {
-  lang: 'system', theme: 'system', palette: 'harbor', icon: null, display: 'SEK', lastBackup: null, backupCount: 0, hideInstall: false, nagAt: 0, safariNagAt: 0,
+  lang: 'system', theme: 'system', display: 'SEK', lastBackup: null, backupCount: 0, hideInstall: false, nagAt: 0, safariNagAt: 0,
   haptics: true,
   lock: { on: false, credId: null, pinHash: null, pinSalt: null, delay: 60, fails: 0, until: 0 },
 };
@@ -543,49 +533,13 @@ function budgetStatus(ym, catId) {
   return { total, spent, left, pct, daysLeft, perDay: daysLeft > 0 && left > 0 ? left / daysLeft : 0, level: pct > 1 ? 'over' : pct >= 0.8 ? 'warn' : 'ok' };
 }
 
-/* ───────────────────────── guilloche art ───────────────────────── */
+/* ───────────────────────── marks ───────────────────────── */
 
-function rosettePaths(cx, cy, R, bands) {
-  const paths = [];
-  for (const [base, amp, freq, layers, wob = 0] of bands) {
-    const steps = Math.max(120, freq * 12);
-    for (let k = 0; k < layers; k++) {
-      const ph = (k / layers) * Math.PI * 2;
-      let d = '';
-      for (let i = 0; i <= steps; i++) {
-        const a = (i / steps) * Math.PI * 2;
-        const r = R * (base + amp * Math.sin(freq * a + ph) + wob * Math.sin(3 * a - ph));
-        d += (i ? 'L' : 'M') + (cx + r * Math.cos(a)).toFixed(1) + ' ' + (cy + r * Math.sin(a)).toFixed(1);
-      }
-      paths.push(d + 'Z');
-    }
-  }
-  return paths;
-}
-const NOTE_BANDS = [[0.88, 0.05, 30, 9], [0.66, 0.13, 15, 12, 0.012], [0.4, 0.09, 10, 9], [0.18, 0.05, 6, 6]];
-function noteArtURL() {
-  const p = rosettePaths(200, 200, 192, NOTE_BANDS);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><g fill="none" stroke="#fff" stroke-opacity=".17" stroke-width=".8">${p.map(d => `<path d="${d}"/>`).join('')}</g></svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-}
-const PALETTES = ['harbor', 'ledger', 'receipt', 'piggy', 'coin'];
-const MARKS = {
-  ledger: '<g stroke-width="5" stroke-linecap="round"><path d="M30 24v52M43 24v52M56 24v52M69 24v52"/><path d="M19 68 81 32"/></g>',
-  receipt: '<g stroke-width="4" stroke-linejoin="round" stroke-linecap="round"><path d="M28 12h44v76l-7.33-5-7.33 5-7.34-5-7.33 5-7.34-5-7.33 5z"/><path d="M38 30h24M38 42h24M38 54h14M38 68h24"/></g>',
-  piggy: '<g stroke-width="4" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="47" cy="57" rx="29" ry="21"/><path d="M31 41l3-12 10 8"/><ellipse cx="78" cy="57" rx="6.5" ry="8"/><path d="M34 76v8M58 76v8M18 52c-6-1-7 6-2 7M42 37h11"/><circle cx="48" cy="17" r="7"/></g><circle cx="64" cy="51" r="2.4" fill="currentColor"/>',
-  coin: '<g stroke-width="4" stroke-linejoin="round"><ellipse cx="50" cy="28" rx="26" ry="8"/><path d="M24 28v11c0 4.4 11.6 8 26 8s26-3.6 26-8V28M24 42v11c0 4.4 11.6 8 26 8s26-3.6 26-8V42M24 56v11c0 4.4 11.6 8 26 8s26-3.6 26-8V56"/></g>',
-};
-// The small drawing used on empty screens, the lock screen and About follows the chosen style.
-function themeMark(cls = '') {
-  const p = S.settings?.palette;
-  if (!MARKS[p]) return rosetteMark(cls);
-  return raw(`<svg class="mark ${cls}" viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="currentColor">${MARKS[p]}</g></svg>`);
-}
-let markCache = null;
-function rosetteMark(cls = '') {
-  markCache ||= rosettePaths(50, 50, 46, [[0.8, 0.12, 12, 7], [0.42, 0.13, 7, 6]]).map(d => `<path d="${d}"/>`).join('');
-  return raw(`<svg class="mark ${cls}" viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.1">${markCache}</g></svg>`);
-}
+// The small receipt drawn on empty screens, the lock screen and About.
+const RECEIPT_MARK = '<g stroke-width="4" stroke-linejoin="round" stroke-linecap="round"><path d="M28 12h44v76l-7.33-5-7.33 5-7.34-5-7.33 5-7.34-5-7.33 5z"/><path d="M38 30h24M38 42h24M38 54h14M38 68h24"/></g>';
+const themeMark = (cls = '') => raw(`<svg class="mark ${cls}" viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="currentColor">${RECEIPT_MARK}</g></svg>`);
+// eight fading spokes that tick round, like iOS's activity indicator
+const spinner = () => raw(`<svg class="spinner" viewBox="0 0 24 24" aria-hidden="true">${Array.from({ length: 8 }, (_, i) => `<line x1="12" y1="2.6" x2="12" y2="6.8" transform="rotate(${i * 45} 12 12)" stroke-opacity="${(0.2 + (0.8 * i) / 7).toFixed(2)}"/>`).join('')}</svg>`);
 
 /* ───────────────────────── charts ───────────────────────── */
 
@@ -664,6 +618,7 @@ function renderApp() {
     <div class="topbar" id="topbar"><button class="topbar-t" data-act="scroll-top" aria-label="${t('backToTop')}"></button></div>${tabbarHTML()}`.s;
   const v = $('#view');
   v.addEventListener('scroll', () => updateTopbar(), { passive: true });
+  bindSwipe(v);
   v.scrollTop = S.scroll[S.tab] || 0;
   afterRender();
 }
@@ -680,6 +635,7 @@ function renderView(keep = true) {
 function afterRender() {
   const v = $('#view');
   if (!v) return;
+  swOpen = null;
   syncSegs(v);
   const enter = (S.tab === 'stats' && S.statsAnim === 'enter') || (S.tab === 'budget' && S.budgetAnim === 'enter');
   S.statsAnim = S.budgetAnim = null;
@@ -709,7 +665,7 @@ function tabbarHTML() {
   const tab = (id, icon, label) => html`<button class="tab ${S.tab === id ? 'on' : ''}" data-act="tab" data-tab="${id}" aria-current="${S.tab === id ? 'page' : 'false'}">${ic(icon)}<span>${label}</span></button>`;
   return html`<nav class="tabbar" aria-label="${t('appName')}">
     ${tab('home', 'receipt', t('tabHome'))}${tab('stats', 'pie', t('tabStats'))}
-    <button class="tab-add" data-act="add" aria-label="${t('add')}">${ic('plus')}</button>
+    <button class="tab-add" data-act="add" data-hx aria-label="${t('add')}">${ic('plus')}${hxs()}</button>
     ${tab('budget', 'gauge', t('tabBudget'))}${tab('settings', 'sliders', t('tabSettings'))}</nav>`;
 }
 function heroHTML({ kicker, title, titleHTML, right }) {
@@ -804,7 +760,8 @@ function rowHTML(x) {
   const c = catById(x.cat);
   const sign = x.type === 'expense' ? MINUS : '+';
   const disp = dispCur(), same = x.currency === disp;
-  return html`<li data-flip="t:${x.id}"><button class="row" data-act="tx-edit" data-id="${x.id}">${tileHTML(c)}
+  return html`<li class="sw" data-flip="t:${x.id}"><div class="sw-act"><button class="sw-del" data-act="swipe-del" data-hx tabindex="-1" aria-label="${t('delete')}">${ic('trash')}<span>${t('delete')}</span>${hxs()}</button></div>
+    <button class="row" data-act="tx-edit" data-id="${x.id}">${tileHTML(c)}
     <span class="row-main"><span class="row-title">${x.note || catName(c)}</span>${x.note ? html`<span class="row-sub">${catName(c)}</span>` : ''}</span>
     <span class="row-amt ${x.type === 'income' ? 'in' : ''}"><span class="num">${same ? sign + fmtNum(x.amount, dpOf(x.currency)) : fmtMoney(x.amount, x.currency, sign)}</span>${same ? '' : html`<span class="amt-sub num">${fmtD(val(x), sign)}</span>`}</span>
   </button></li>`;
@@ -923,8 +880,6 @@ function settingsView() {
     </div>
     <h2 class="sec">${t('appearance')}</h2>
     <div class="group">
-      <div class="pick"><div class="pick-head">${ic('palette')}<span>${t('palette')}</span></div>${paletteSwatches()}</div>
-      <div class="pick"><div class="pick-head">${ic('appicon')}<span>${t('icon')}</span></div>${iconPicker()}</div>
       <div class="srow col"><span class="srow-ic">${ic('contrast')}</span><span class="srow-main"><span class="srow-label">${t('theme')}</span></span>${segmented('set-theme', st.theme, [['system', t('themeSystem')], ['light', t('themeLight')], ['dark', t('themeDark')]], 'small')}</div>
       <div class="srow col"><span class="srow-ic">${ic('globe')}</span><span class="srow-main"><span class="srow-label">${t('language')}</span></span>${segmented('set-lang', st.lang, [['system', t('langSystem')], ['zh', '中文'], ['en', 'English']], 'small')}</div>
       ${hapticsAvailable() ? row('haptic', t('haptics'), { sub: t('hapticsSub'), control: html`<label class="switch"><input type="checkbox" switch data-change="set-haptics" ${st.haptics !== false ? 'checked' : ''} aria-label="${t('haptics')}"><i></i></label>` }) : ''}
@@ -974,26 +929,6 @@ function openDispPicker() {
       <button class="btn ghost wide" data-act="disp-other">${ic('search')}<span>${t('otherCur')}</span></button>`,
   });
 }
-function paletteSwatches() {
-  const cur = S.settings.palette;
-  return html`<div class="pals" role="radiogroup" aria-label="${t('palette')}">${PALETTES.map(p => html`<button class="pal ${p === cur ? 'on' : ''}" data-act="set-palette" data-v="${p}" data-palette="${p}" role="radio" aria-checked="${p === cur ? 'true' : 'false'}">
-    <span class="pal-note note-face" aria-hidden="true"><span class="pal-amt num">1,284<small>kr</small></span></span><span class="pal-name">${t('pal_' + p)}</span></button>`)}</div>`;
-}
-function iconPicker() {
-  const cur = PALETTES.includes(S.settings.icon) ? S.settings.icon : S.settings.palette;
-  const app = isStandalone();
-  const hint = app ? t('iconHintApp') : isIOS ? t('iconHintSafari') : '';
-  return html`<div class="icos" role="radiogroup" aria-label="${t('icon')}">${PALETTES.map(p => html`<button class="ico ${p === cur ? 'on' : ''}" data-act="set-icon" data-v="${p}" role="radio" aria-checked="${p === cur ? 'true' : 'false'}" aria-label="${t('pal_' + p)}"><img src="icons/${p}-180.png" alt="" width="56" height="56"></button>`)}</div>
-    ${hint ? html`<p class="pick-note">${hint}${app ? html` <button class="txt-btn" data-act="icon-steps">${t('iconSteps')}</button>` : ''}</p>` : ''}`;
-}
-function openIconSteps() {
-  const url = (location.host + location.pathname).replace(/index\.html$/, '');
-  openSheet({
-    id: 'icon-steps', title: t('iconStepsTitle'), left: html`<button class="txt-btn" data-act="sheet-close">${t('done')}</button>`,
-    body: html`<ol class="steps">${['iconStep1', 'iconStep2', 'iconStep3', 'iconStep4', 'iconStep5'].map(k => html`<li>${t(k, { url })}</li>`)}</ol>`,
-  });
-}
-
 /* ───────────────────────── motion & haptics ───────────────────────── */
 /* Motion here follows Apple's lead: it only answers something the user did, it is brief, it shows where
    things went (a new row slides in, numbers roll, the selected segment glides), and it gives way to
@@ -1006,13 +941,19 @@ function anim(el, frames, opts = {}) {
   if (!el?.animate || !motionOK()) return null;
   try { return el.animate(frames, { duration: 320, easing: EASE_OUT, fill: 'backwards', ...opts }); } catch { return null; }
 }
-// Safari has no Vibration API, but on iOS 18 and later toggling a native switch (<input type=checkbox switch>)
-// plays the system's light haptic. It only plays during a tap, so call this from tap handlers.
-let hxLabel = null;
+// iOS has no Vibration API. A native switch (<input type=checkbox switch>, iOS 18+) plays the system's tick
+// when it's toggled, and since iOS 26.5 only a real finger tap on the switch counts. So a button that should
+// tick carries an invisible switch laid over it (hxs below): the finger toggles the switch, and the tap still
+// reaches the button. Android uses navigator.vibrate instead. haptic() covers the few moments that aren't a
+// tap on such a button (a full swipe, a wrong passcode); iOS before 26.5 plays those, later versions can't.
+const hxs = () => (isIOS ? raw('<input type="checkbox" switch class="hxs" tabindex="-1" aria-hidden="true">') : '');
+const applyHaptics = () => document.documentElement.classList.toggle('no-hx', S.settings?.haptics === false);
+let hxLabel = null, hxAt = 0;
 const VIBRATE = { tap: 8, success: [8, 100, 12], error: [12, 60, 12, 60, 12] };
 const hapticsAvailable = () => isIOS || typeof navigator.vibrate === 'function';
-function haptic(kind = 'tap') {
+function haptic(kind = 'tap', force = false) {
   if (S.settings?.haptics === false) return;
+  if (!force && Date.now() - hxAt < 600) return; // that tap already ticked
   try {
     if (!isIOS) { navigator.vibrate?.(VIBRATE[kind] || 8); return; }
     if (!hxLabel) {
@@ -1167,6 +1108,115 @@ function flipPlay(snap, fresh) {
   }
 }
 const withFlip = (fn, fresh) => { const snap = flipSnap(); fn(); flipPlay(snap, fresh); };
+/* Swipe a ledger row left to delete it, as in Messages: a short swipe reveals the red button, a long one
+   deletes straight away. The row then tears off like a strip of receipt paper (serrated top and bottom edges,
+   pulled away to the left), the rows below close the gap, and the toast offers Undo. */
+const SW_OPEN = 82;
+let swOpen = null;
+function setSwipe(li, dx, animate = true) {
+  const row = li.querySelector('.row'), del = li.querySelector('.sw-del');
+  if (!row || !del) return;
+  row.style.transition = del.style.transition = animate ? '' : 'none';
+  row.style.transform = dx ? `translateX(${dx}px)` : '';
+  del.style.width = `${Math.max(0, -dx)}px`;
+}
+function openSwipe(li) {
+  if (swOpen && swOpen !== li) closeSwipe(swOpen);
+  li.classList.remove('full'); li.classList.add('open'); swOpen = li;
+  setSwipe(li, -SW_OPEN);
+}
+function closeSwipe(li = swOpen) {
+  if (!li) return;
+  li.classList.remove('open', 'full');
+  if (swOpen === li) swOpen = null;
+  setSwipe(li, 0);
+}
+function bindSwipe(v) {
+  let st = null;
+  v.addEventListener('touchstart', e => {
+    st = null;
+    if (e.touches.length !== 1 || e.target.closest('.sw-del')) return;
+    const li = e.target.closest('.sw');
+    if (swOpen && li !== swOpen) { closeSwipe(); dragTapBlock = Date.now() + 450; return; } // that tap only closes the open row
+    if (!li || li.classList.contains('tearing')) return;
+    const p = e.touches[0];
+    st = { li, x0: p.clientX, y0: p.clientY, base: li === swOpen ? -SW_OPEN : 0, dx: 0, w: li.offsetWidth, mode: null, lx: p.clientX, lt: e.timeStamp, vx: 0 };
+  }, { passive: true });
+  v.addEventListener('touchmove', e => {
+    if (!st) return;
+    const p = e.touches[0], mx = p.clientX - st.x0, my = p.clientY - st.y0;
+    if (!st.mode) {
+      if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+      if (Math.abs(mx) > Math.abs(my) * 1.15 && (mx < 0 || st.base < 0)) { st.mode = 'swipe'; st.li.classList.add('swiping'); }
+      else { st.mode = 'scroll'; if (swOpen) closeSwipe(); return; }
+    }
+    if (st.mode !== 'swipe') return;
+    if (e.cancelable) e.preventDefault();
+    let dx = st.base + mx;
+    if (dx > 0) dx *= 0.2;
+    dx = Math.max(dx, -st.w);
+    const full = -dx > st.w * 0.58;
+    if (full !== st.li.classList.contains('full')) { st.li.classList.toggle('full', full); if (full) haptic('tap'); }
+    const dt = Math.max(1, e.timeStamp - st.lt);
+    st.vx = 0.6 * ((p.clientX - st.lx) / dt) + 0.4 * st.vx; st.lx = p.clientX; st.lt = e.timeStamp;
+    st.dx = dx;
+    setSwipe(st.li, dx, false);
+  }, { passive: false });
+  const end = e => {
+    if (!st) return;
+    const s = st; st = null;
+    if (!s.mode) { if (s.base < 0) { closeSwipe(s.li); dragTapBlock = Date.now() + 450; } return; } // a tap on the open row closes it
+    if (s.mode !== 'swipe') return;
+    dragTapBlock = Date.now() + 350;
+    s.li.classList.remove('swiping');
+    if (e.type === 'touchend' && s.li.classList.contains('full')) { tearOff(s.li); return; }
+    if (s.vx < -0.35 || (-s.dx > SW_OPEN * 0.55 && s.vx < 0.35)) openSwipe(s.li); else closeSwipe(s.li);
+  };
+  v.addEventListener('touchend', end);
+  v.addEventListener('touchcancel', end);
+  v.addEventListener('scroll', () => { if (swOpen && !st) closeSwipe(); }, { passive: true });
+}
+// a rectangle whose top and bottom edges are serrated d px deep, as torn against a receipt printer's blade
+function tornEdges(w, h, d) {
+  const n = Math.max(6, Math.round(w / 10)), step = w / n, pts = [];
+  for (let i = 0; i <= n; i++) pts.push(`${(i * step).toFixed(1)}px ${(i % 2 ? d : 0).toFixed(1)}px`);
+  for (let i = n; i >= 0; i--) pts.push(`${(i * step).toFixed(1)}px ${(h - (i % 2 ? d : 0)).toFixed(1)}px`);
+  return `polygon(${pts.join(', ')})`;
+}
+async function tearOff(li) {
+  const row = li.querySelector('.row'), del = li.querySelector('.sw-del');
+  const tx = S.tx.find(x => x.id === row?.dataset.id);
+  if (!tx || li.classList.contains('tearing')) return;
+  if (swOpen === li) swOpen = null;
+  li.classList.remove('open', 'full', 'swiping'); li.classList.add('tearing');
+  li.removeAttribute('data-flip'); // it leaves by tearing, so it shouldn't also fade out
+  haptic('tap'); // a long swipe isn't a tap on a switch, so only older iOS can tick here
+  if (motionOK()) {
+    const w = row.offsetWidth, h = row.offsetHeight, x = new DOMMatrix(getComputedStyle(row).transform).m41 || 0;
+    row.style.transition = 'none';
+    const a = row.animate([
+      { offset: 0, transform: `translateX(${x}px)`, clipPath: tornEdges(w, h, 0), opacity: 1, easing: 'cubic-bezier(.2, .7, .3, 1)' },
+      { offset: 0.24, transform: `translateX(${x - 8}px) translateY(1px) rotate(-.8deg)`, clipPath: tornEdges(w, h, 4), opacity: 1, easing: 'cubic-bezier(.5, 0, .8, .3)' },
+      { offset: 1, transform: `translateX(${x - w - 90}px) translateY(22px) rotate(-9deg)`, clipPath: tornEdges(w, h, 4), opacity: 0 },
+    ], { duration: 560, fill: 'forwards' });
+    del?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, delay: 200, fill: 'forwards' });
+    await a.finished.catch(() => {});
+  }
+  await removeTx(tx);
+}
+async function removeTx(tx) {
+  await db.del(tx.id);
+  S.tx = S.tx.filter(x => x.id !== tx.id);
+  withFlip(() => refreshAll());
+  toast(t('deleted'), { action: t('undo'), onAction: () => restoreTx(tx) });
+}
+async function restoreTx(tx) {
+  if (S.tx.some(x => x.id === tx.id)) return;
+  await db.put(tx);
+  S.tx.push(tx); sortTx();
+  withFlip(() => refreshAll(), new Set(['t:' + tx.id]));
+}
+
 // Moving between months slides the content the way the arrows point.
 function slideIn(el, dir) { anim(el, [{ opacity: 0, transform: `translateX(${dir * 22}px)` }, { opacity: 1, transform: 'none' }], { duration: 360, easing: EASE }); }
 // Theme, style and language changes cross-fade where the browser can.
@@ -1231,7 +1281,7 @@ function bindDrag(sheet, rec) {
   const bd = rec.el.querySelector('.sheet-backdrop');
   sheet.addEventListener('touchstart', e => {
     y0 = null;
-    if (e.touches.length !== 1 || e.target.closest('input,select,textarea,.sheet-foot,[data-nodrag]')) return;
+    if (e.touches.length !== 1 || e.target.closest('input:not(.hxs),select,textarea,.sheet-foot,[data-nodrag]')) return;
     y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; t0 = Date.now(); mode = null;
     scroller = e.target.closest('[data-drag]') ? null : scrollerIn(e.target, sheet);
   }, { passive: true });
@@ -1504,13 +1554,21 @@ function catGridHTML() {
     <button class="cat add" data-act="f-cat-new"><span class="tile" style="--c:#8B969B">${ic('plus')}</span><span>${t('newCat')}</span></button>`;
 }
 function keypadHTML() {
-  const k = (v, label = v, cls = '') => html`<button class="${cls}" data-act="kp" data-k="${v}">${label}</button>`;
-  return html`${k('1')}${k('2')}${k('3')}<button class="fn" data-act="kp" data-k="del" aria-label="${t('delete')}">${ic('backspace')}</button>
+  const k = (v, label = v, cls = '') => html`<button class="${cls}" data-act="kp" data-k="${v}" data-hx>${label}${hxs()}</button>`;
+  return html`${k('1')}${k('2')}${k('3')}<button class="fn" data-act="kp" data-k="del" data-hx aria-label="${t('delete')}">${ic('backspace')}${hxs()}</button>
     ${k('4')}${k('5')}${k('6')}${k('+', '+', 'fn')}
     ${k('7')}${k('8')}${k('9')}${k('-', MINUS, 'fn')}
-    ${k('.', '.', dpOf(F.cur) ? '' : 'dim')}${k('0')}<button class="save ${F.type}" data-act="kp-save" id="kp-save">${hasOp(F.expr) ? '=' : t('save')}</button>`;
+    ${k('.', '.', dpOf(F.cur) ? '' : 'dim')}${k('0')}<button class="save ${F.type}" data-act="kp-save" id="kp-save" data-hx><span class="kp-l">${hasOp(F.expr) ? '=' : t('save')}</span>${hxs()}</button>`;
 }
-const updAmount = () => { const el = $('#f-amount'); if (el && F) el.innerHTML = amountHTML().s; const s = $('#kp-save'); if (s && F) s.textContent = hasOp(F.expr) ? '=' : t('save'); fitAmount(); };
+const updAmount = () => {
+  if (!F) return;
+  const el = $('#f-amount'); if (el) el.innerHTML = amountHTML().s;
+  const l = $('#kp-save .kp-l'); if (l) l.textContent = hasOp(F.expr) ? '=' : t('save');
+  // like Calculator, a pending + or − stays lit until the next number
+  const last = F.expr.slice(-1);
+  $$('#kp [data-k="+"], #kp [data-k="-"]').forEach(b => b.classList.toggle('on', b.dataset.k === last));
+  fitAmount();
+};
 // Like the Calculator display, a long amount gets smaller rather than being cut off.
 function fitAmount() {
   const el = $('#f-amount .amt-big');
@@ -1551,7 +1609,6 @@ async function saveEntry() {
   if (hasOp(F.expr)) { const v = evalExpr(F.expr); F.expr = v > 0 ? trimNum(v, dpOf(F.cur)) : ''; updAmount(); if (!(v > 0)) { shake('#f-amount .amt-big'); toast(t('negative')); } return; }
   const amt = evalExpr(F.expr);
   if (!(amt > 0)) { shake('#f-amount .amt-big'); toast(t('enterAmount')); return; }
-  if (F.cur === BASE || F.rate > 0) haptic('tap');
   if (F.ratePromise) { const form = F; await Promise.race([F.ratePromise, new Promise(r => setTimeout(r, 4000))]); if (F !== form) return; }
   if (F.cur !== BASE && !(F.rate > 0)) { toast(t('needRate')); openRateSheet(); return; }
   const rate = F.cur === BASE ? 1 : F.rate;
@@ -1925,15 +1982,15 @@ async function decryptBackup(env, password) {
   return JSON.parse(td.decode(data));
 }
 function backupPayload() {
-  const { palette, icon, theme, lang, display, haptics } = S.settings;
-  return { app: 'tally', v: 1, exportedAt: new Date().toISOString(), tx: S.tx, cats: S.cats, budget: S.budget, rules: S.rules, lastCat: S.lastCat, recentCur: S.recentCur, prefs: { palette, icon, theme, lang, display, haptics } };
+  const { theme, lang, display, haptics } = S.settings;
+  return { app: 'tally', v: 1, exportedAt: new Date().toISOString(), tx: S.tx, cats: S.cats, budget: S.budget, rules: S.rules, lastCat: S.lastCat, recentCur: S.recentCur, prefs: { theme, lang, display, haptics } };
 }
 function openBackupExport() {
   const body = (err = '') => html`<p class="lead">${t('backupWhy')}</p>
     <p class="field-label">${t('backupPw')}</p><div class="field"><input id="bk-pw" type="password" autocomplete="new-password" placeholder="${t('backupPwPh')}"></div>
     <p class="field-label">${t('backupPw2')}</p><div class="field"><input id="bk-pw2" type="password" autocomplete="new-password"></div>
     ${err ? html`<p class="hint err">${err}</p>` : ''}
-    <button class="btn primary wide" data-act="bk-make">${ic('lock')}<span>${t('makeBackup')}</span></button>`;
+    <button class="btn primary wide" data-act="bk-make" data-hx>${ic('lock')}<span>${t('makeBackup')}</span>${hxs()}</button>`;
   const rec = openSheet({ id: 'backup', title: t('backupTitle'), tall: true, body: body() });
   rec.err = e => rec.body(body(e));
 }
@@ -1941,12 +1998,11 @@ async function makeBackup(rec) {
   const pw = $('#bk-pw')?.value || '', pw2 = $('#bk-pw2')?.value || '';
   if (pw.length < 6) return rec.err(t('pwShort'));
   if (pw !== pw2) return rec.err(t('pwMismatch'));
-  rec.body(html`<div class="busy">${rosetteMark('spin')}<p>${t('making')}</p></div>`);
+  rec.body(html`<div class="busy">${spinner()}<p>${t('making')}</p></div>`);
   try {
     const env = await encryptBackup(backupPayload(), pw);
     rec.blob = new Blob([JSON.stringify(env)], { type: 'application/json' });
     rec.name = `tally-backup-${todayStr()}.json`;
-    haptic('success');
     rec.body(html`<div class="done-state">${ic('shieldCheck', 'big')}<p class="empty-title">${t('backupReady')}</p><p class="empty-sub">${t('backupReadySub')}</p>
       <button class="btn primary wide" data-act="bk-save">${ic('export')}<span>${t('saveFile')}</span></button></div>`);
   } catch (e) { console.error(e); rec.err(String(e?.message || e)); }
@@ -1974,14 +2030,14 @@ async function startRestore(file) {
   if (env?.app !== 'tally') { toast(t('notBackup')); return; }
   if (!env.data) return confirmRestore(env);
   const body = (err = '') => html`<p class="field-label">${t('restorePw')}</p><div class="field"><input id="rs-pw" type="password" autocomplete="current-password"></div>
-    ${err ? html`<p class="hint err">${err}</p>` : ''}<button class="btn primary wide" data-act="rs-go">${ic('lock')}<span>${t('restoreGo')}</span></button>`;
+    ${err ? html`<p class="hint err">${err}</p>` : ''}<button class="btn primary wide" data-act="rs-go" data-hx>${ic('lock')}<span>${t('restoreGo')}</span>${hxs()}</button>`;
   const rec = openSheet({ id: 'restore', title: t('restoreTitle'), body: body() });
   rec.env = env; rec.err = e => rec.body(body(e));
   rec.el.querySelector('#rs-pw')?.focus();
 }
 async function runRestore(rec) {
   const pw = $('#rs-pw')?.value || '';
-  rec.body(html`<div class="busy">${rosetteMark('spin')}<p>${t('making')}</p></div>`);
+  rec.body(html`<div class="busy">${spinner()}<p>${t('making')}</p></div>`);
   let payload;
   try { payload = await decryptBackup(rec.env, pw); } catch { rec.err(t('wrongBackupPw')); return; }
   closeSheet(rec);
@@ -1997,11 +2053,10 @@ async function confirmRestore(payload) {
   Object.assign(S, { tx: clean.tx, cats: clean.cats, budget: clean.budget, rules: clean.rules, lastCat: clean.lastCat, recentCur: clean.recentCur });
   sortTx();
   await Promise.all(['cats', 'budget', 'rules', 'lastCat', 'recentCur'].map(k => db.set(k, S[k])));
-  if (Object.keys(clean.prefs).length) { Object.assign(S.settings, clean.prefs); await saveSettings(); applyLang(); applyPalette(); }
+  if (Object.keys(clean.prefs).length) { Object.assign(S.settings, clean.prefs); await saveSettings(); applyLang(); applyLook(); }
   S.month = S.tx[0] ? monthOf(S.tx[0].date) : S.month;
   closeAllSheets();
   S.tab = 'home'; renderApp();
-  haptic('success');
   toast(t('restored', { n: clean.tx.length }), { icon: 'check' });
 }
 function sanitizeBackup(o) {
@@ -2027,8 +2082,6 @@ function sanitizeBackup(o) {
   for (const ty of ['expense', 'income']) if (ids.has(o.lastCat?.[ty])) lastCat[ty] = o.lastCat[ty];
   const recentCur = (Array.isArray(o.recentCur) ? o.recentCur : []).filter(c => /^[A-Z]{3}$/.test(c)).slice(0, 5);
   const pr = o.prefs && typeof o.prefs === 'object' ? o.prefs : {}, prefs = {};
-  if (PALETTES.includes(pr.palette)) prefs.palette = pr.palette;
-  if ('icon' in pr && (pr.icon === null || PALETTES.includes(pr.icon))) prefs.icon = pr.icon;
   if (['system', 'light', 'dark'].includes(pr.theme)) prefs.theme = pr.theme;
   if (['system', 'zh', 'en'].includes(pr.lang)) prefs.lang = pr.lang;
   if (typeof pr.display === 'string' && /^[A-Z]{3}$/.test(pr.display)) prefs.display = pr.display;
@@ -2914,7 +2967,7 @@ function setImportCur(P, c) {
 function previewFoot(P) {
   const on = P.cands.filter(c => c.on && !c.dup), n = on.length;
   if (on.some(c => !c.cur)) return html`<button class="btn primary wide" data-act="imp-confirm" disabled>${t('impPickCur')}</button>`;
-  return html`<button class="btn primary wide" data-act="imp-confirm" ${n ? '' : 'disabled'}>${t('impGo', { n })}</button>`;
+  return html`<button class="btn primary wide" data-act="imp-confirm" data-hx ${n ? '' : 'disabled'}><span>${t('impGo', { n })}</span>${hxs()}</button>`;
 }
 async function confirmImport(P) {
   const chosen = P.cands.filter(c => c.on && !c.dup);
@@ -2944,7 +2997,6 @@ async function confirmImport(P) {
   S.month = monthOf(txs.map(x => x.date).sort().pop());
   renderApp();
   flipPlay(snap ? { ...snap, tab: 'home' } : null, new Set(txs.map(x => 't:' + x.id)));
-  haptic('success');
   toast(t('impDone', { n: txs.length }), { icon: 'check' });
   ensureDispSeries();
 }
@@ -3042,16 +3094,17 @@ const ACT = {
   'kp-save'() { if (F) saveEntry().catch(e => { console.error(e); toast(String(e?.message || e)); }); },
   async 'f-delete'() {
     if (!F?.orig) return;
-    if (!await confirmDialog({ title: t('delTitle'), message: t('delMsg'), ok: t('delete'), danger: true })) return;
-    const id = F.orig.id;
-    await db.del(id);
-    S.tx = S.tx.filter(x => x.id !== id);
-    const snap = flipSnap();
+    const tx = F.orig;
     closeSheet(sheetById('entry'));
-    refreshAll();
-    flipPlay(snap);
-    if (!(S.tab === 'home' && !S.search && !sheets.length)) toast(t('deleted'), { icon: 'check' });
+    const v = $('#view'), li = v?.querySelector(`.sw[data-flip="t:${tx.id}"]`);
+    const r = li?.getBoundingClientRect(), vr = v?.getBoundingClientRect();
+    if (li && !sheets.length && motionOK() && r.bottom > vr.top && r.top < vr.bottom) {
+      await new Promise(res => setTimeout(res, 260));
+      return tearOff(li);
+    }
+    return removeTx(tx);
   },
+  'swipe-del'(el) { const li = el.closest('.sw'); if (li) tearOff(li); },
   'rate-save'() {
     const v = parseAmount($('#rate-in')?.value);
     if (!(v > 0)) { toast(t('rateInvalid')); shake('#rate-in'); return; }
@@ -3112,13 +3165,6 @@ const ACT = {
   'disp-open'() { openDispPicker(); },
   'disp-pick'(el) { setDisplay(el.dataset.c); },
   'disp-other'() { openCurrencySheet(dispCur(), c => setDisplay(c)); },
-  'set-palette'(el) { if (S.settings.palette === el.dataset.v) return; S.settings.palette = el.dataset.v; saveSettings(); withTransition(() => { applyPalette(); renderView(); }); },
-  'set-icon'(el) {
-    const v = el.dataset.v, changed = v !== (PALETTES.includes(S.settings.icon) ? S.settings.icon : S.settings.palette);
-    S.settings.icon = v; saveSettings(); applyPalette(); renderView();
-    if (changed && isStandalone() && !DEMO) openIconSteps();
-  },
-  'icon-steps'() { openIconSteps(); },
   'reload-app'() { location.reload(); },
   'safari-later'() { S.settings.safariNagAt = Date.now(); saveSettings(); withFlip(() => renderView()); },
   'set-lang'(el) { if (S.settings.lang === el.dataset.v) return; S.settings.lang = el.dataset.v; saveSettings(); withTransition(() => { applyLang(); renderApp(); }); },
@@ -3205,7 +3251,7 @@ const CHANGE = {
     else updAmount();
   },
   'lock-toggle'(el) { if (el.checked) enableLock(); else disableLock(); },
-  'set-haptics'(el) { S.settings.haptics = el.checked; saveSettings(); },
+  'set-haptics'(el) { S.settings.haptics = el.checked; saveSettings(); applyHaptics(); },
   'lock-delay'(el) { S.settings.lock.delay = +el.value; saveSettings(); renderView(); },
   'imp-map'(el) {
     const P = S.imp;
@@ -3221,14 +3267,10 @@ const CHANGE = {
 /* ───────────────────────── theme, language, lifecycle ───────────────────────── */
 
 const HOST_THEME = document.documentElement.dataset.theme;
-function applyPalette() {
-  const p = PALETTES.includes(S.settings.palette) ? S.settings.palette : 'harbor';
-  document.documentElement.dataset.palette = p;
-  const icon = PALETTES.includes(S.settings.icon) ? S.settings.icon : p;
-  const link = $('link[rel="apple-touch-icon"]');
-  if (link) link.href = `icons/${icon}-180.png`;
+function applyLook() {
   const cover = $('#cover');
   if (cover) cover.innerHTML = themeMark().s;
+  applyHaptics();
   applyTheme();
 }
 function applyTheme() {
@@ -3247,11 +3289,13 @@ function applyLang() {
 }
 function bindGlobal() {
   document.addEventListener('click', e => {
+    const hx = e.target.closest?.('[data-hx]');
+    if (hx && !hx.disabled) { if (!isIOS) haptic('tap', true); hxAt = Date.now(); }
     const el = e.target.closest('[data-act]');
     if (!el || el.disabled) return;
     const fn = ACT[el.dataset.act];
     if (!fn) return;
-    e.preventDefault();
+    if (!e.target.classList?.contains('hxs')) e.preventDefault(); // cancelling the switch's click would mute its tick
     try { const r = fn(el, e); if (r?.catch) r.catch(err => { console.error(err); toast(String(err?.message || err)); }); } catch (err) { console.error(err); toast(String(err?.message || err)); }
   });
   document.addEventListener('input', e => { const el = e.target.closest('[data-input]'); if (el) INPUT[el.dataset.input]?.(el, e); });
@@ -3262,6 +3306,13 @@ function bindGlobal() {
     if (e.key === 'Enter' && e.target.id === 'pdf-pw-in') { e.preventDefault(); ACT['pdf-pw-go'](); }
   });
   document.addEventListener('touchstart', () => {}, { passive: true });
+  // Calculator-style keys: a key lights up the instant it's touched and fades back after release, so even the
+  // quickest tap is visible. The + button sinks in the same way.
+  const KEYS_SEL = '.kp button, .pinpad button, .tab-add';
+  document.addEventListener('pointerdown', e => { const b = e.target.closest?.(KEYS_SEL); if (b && !b.disabled) b.classList.add('hit'); }, { passive: true });
+  const unhit = () => $$('.hit').forEach(b => b.classList.remove('hit'));
+  document.addEventListener('pointerup', unhit, { passive: true });
+  document.addEventListener('pointercancel', unhit, { passive: true });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       S.hiddenAt = Date.now();
@@ -3348,8 +3399,7 @@ async function boot() {
   S.settings = { ...structuredClone(DEFAULT_SETTINGS), ...(st || {}) };
   S.settings.lock = { ...DEFAULT_SETTINGS.lock, ...(st?.lock || {}) };
   applyLang();
-  document.documentElement.style.setProperty('--guilloche', noteArtURL());
-  applyPalette();
+  applyLook();
   bindGlobal();
   registerSW();
   if (!DEMO) {
